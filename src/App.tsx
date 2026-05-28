@@ -1,0 +1,39 @@
+import { useEffect } from "react";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
+import LandingPage from "./pages/LandingPage";
+import HomePage from "./pages/HomePage";
+import ClubsPage from "./features/clubs/pages/ClubsPage";
+import ClubDetailPage from "./features/clubs/pages/ClubDetailPage";
+import LoginPage from "./features/auth/pages/LoginPage";
+import SignupCompletePage from "./features/auth/pages/SignupCompletePage";
+import MyClubsPage from "./features/my-clubs/pages/MyClubsPage";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0 });
+  }, [pathname]);
+
+  return null;
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <ScrollToTop />
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/home" element={<HomePage />} />
+        <Route path="/clubs" element={<ClubsPage />} />
+        <Route path="/clubs/:clubId" element={<ClubDetailPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<LoginPage />} />
+        <Route path="/signup-complete" element={<SignupCompletePage />} />
+        <Route path="/my-clubs" element={<MyClubsPage />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+export default App;

@@ -1,0 +1,130 @@
+import type { Club } from "@/features/clubs/types";
+
+function createCover(title: string, author: string, colors: [string, string]) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 340">
+    <defs><linearGradient id="cover" x2="1" y2="1"><stop stop-color="${colors[0]}"/><stop offset="1" stop-color="${colors[1]}"/></linearGradient></defs>
+    <rect width="240" height="340" rx="20" fill="url(#cover)"/>
+    <rect x="18" y="18" width="204" height="304" rx="14" fill="none" stroke="#fff8ed" stroke-opacity=".25"/>
+    <path d="M35 76h86M35 84h58" stroke="#fff8ed" stroke-opacity=".38" stroke-width="2"/>
+    <text x="35" y="218" fill="#fff8ed" font-size="25" font-family="sans-serif" font-weight="700">${title}</text>
+    <text x="35" y="250" fill="#fff8ed" fill-opacity=".78" font-size="13" font-family="sans-serif">${author}</text>
+  </svg>`;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+export const mockClubs: Club[] = [
+  {
+    id: 1,
+    title: "이방인",
+    author: "알베르 카뮈",
+    category: "문학",
+    members: 12,
+    maxMembers: 15,
+    tags: ["함께읽기", "토론"],
+    thumbnail: createCover("이방인", "Albert Camus", ["#352722", "#ae815b"]),
+    description: "실존주의적 시선으로 인간의 본질을 탐구하며 천천히 대화합니다.",
+    memberProfiles: ["유진", "하늘", "세아"],
+    meetingLabel: "매주 화요일 오후 9시",
+    createdAt: "2026-05-20",
+  },
+  {
+    id: 2,
+    title: "아몬드",
+    author: "손원평",
+    category: "문학",
+    members: 8,
+    maxMembers: 12,
+    tags: ["완독", "감정기록"],
+    thumbnail: createCover("아몬드", "Won-pyung Sohn", ["#ad7443", "#e1bf88"]),
+    description: "서로 다른 감정의 온도를 기록하고 나누는 따뜻한 읽기 모임입니다.",
+    memberProfiles: ["나래", "준", "민서"],
+    meetingLabel: "격주 토요일 오전 11시",
+    createdAt: "2026-05-18",
+  },
+  {
+    id: 3,
+    title: "모순",
+    author: "양귀자",
+    category: "문학",
+    members: 14,
+    maxMembers: 16,
+    tags: ["문장수집", "리뷰"],
+    thumbnail: createCover("모순", "Gwi-ja Yang", ["#4f4038", "#b69b79"]),
+    description: "삶의 모순을 발견한 문장을 모아 조용하지만 깊게 이야기합니다.",
+    memberProfiles: ["수현", "소담", "채원"],
+    meetingLabel: "매주 목요일 오후 8시",
+    createdAt: "2026-05-13",
+  },
+  {
+    id: 4,
+    title: "어린 왕자",
+    author: "생텍쥐페리",
+    category: "에세이",
+    members: 5,
+    maxMembers: 10,
+    tags: ["필사", "가벼운읽기"],
+    thumbnail: createCover("어린 왕자", "Saint-Exupery", ["#485864", "#d3b982"]),
+    description: "오래 알고 있던 문장을 새로운 마음으로 다시 만나는 짧은 여정입니다.",
+    memberProfiles: ["해인", "예린", "가람"],
+    meetingLabel: "일요일 오후 4시",
+    createdAt: "2026-05-22",
+  },
+  {
+    id: 5,
+    title: "사피엔스",
+    author: "유발 하라리",
+    category: "인문",
+    members: 17,
+    maxMembers: 20,
+    tags: ["인문학", "발제"],
+    thumbnail: createCover("사피엔스", "Yuval Harari", ["#3f4539", "#a28d68"]),
+    description: "질문과 발제를 중심으로 인류의 흐름을 함께 따라가 보는 모임입니다.",
+    memberProfiles: ["지호", "은재", "다온"],
+    meetingLabel: "매주 수요일 오후 8시",
+    createdAt: "2026-05-09",
+  },
+  {
+    id: 6,
+    title: "우리가 빛의 속도로 갈 수 없다면",
+    author: "김초엽",
+    category: "SF",
+    members: 9,
+    maxMembers: 14,
+    tags: ["SF", "장면기록"],
+    thumbnail: createCover("빛의 속도", "Cho-yeop Kim", ["#363249", "#837dae"]),
+    description: "낯선 세계의 장면에서 우리의 일상을 비춰보는 소설 읽기입니다.",
+    memberProfiles: ["서윤", "정민", "루아"],
+    meetingLabel: "금요일 오후 9시",
+    createdAt: "2026-05-21",
+  },
+  {
+    id: 7,
+    title: "아주 작은 습관의 힘",
+    author: "제임스 클리어",
+    category: "인문",
+    members: 6,
+    maxMembers: 12,
+    tags: ["실천기록", "루틴"],
+    thumbnail: createCover("작은 습관", "James Clear", ["#595346", "#c5a876"]),
+    description: "읽은 내용을 한 주의 작은 실천으로 옮겨보며 서로 응원합니다.",
+    memberProfiles: ["지안", "해온", "현우"],
+    meetingLabel: "월요일 오후 7시",
+    createdAt: "2026-05-23",
+  },
+  {
+    id: 8,
+    title: "여행의 이유",
+    author: "김영하",
+    category: "에세이",
+    members: 10,
+    maxMembers: 10,
+    tags: ["에세이", "기록"],
+    thumbnail: createCover("여행의 이유", "Young-ha Kim", ["#554137", "#c0936a"]),
+    description: "떠남과 돌아옴의 이유를 각자의 문장과 추억으로 나눕니다.",
+    memberProfiles: ["온유", "재이", "로하"],
+    meetingLabel: "격주 토요일 오후 2시",
+    createdAt: "2026-05-16",
+    hasStarted: true,
+  },
+];
