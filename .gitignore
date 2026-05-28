@@ -1,4 +1,11 @@
-node_modules
+node_modules/
+dist/
+.next/
+
+.env
+.env.local
+
+*.lognode_modules
 dist
 .env
 .env.local
