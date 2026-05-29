@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
 import HomePage from "./pages/HomePage";
+import SearchPage from "./pages/SearchPage";
+import BookDetailPage from "./pages/BookDetailPage";
 import ClubsPage from "./features/clubs/pages/ClubsPage";
 import ClubDetailPage from "./features/clubs/pages/ClubDetailPage";
 import LoginPage from "./features/auth/pages/LoginPage";
@@ -25,6 +27,8 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/home" element={<HomePage />} />
+        <Route path="/search" element={<SearchPage />} />
+        <Route path="/books/:isbn13" element={<BookDetailPage />} />
         <Route path="/clubs" element={<ClubsPage />} />
         <Route path="/clubs/:clubId" element={<ClubDetailPage />} />
         <Route path="/login" element={<LoginPage />} />
