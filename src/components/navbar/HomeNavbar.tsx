@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { softEase } from "@/animations/motion";
 import OdmLogo from "@/components/shared/OdmLogo";
 import Button from "@/components/ui/Button";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 
 const menuItems = [
   { label: "홈", href: "/home" },
@@ -12,6 +13,8 @@ const menuItems = [
 ];
 
 export default function HomeNavbar() {
+  const { isLoggedIn } = useAuth();
+
   return (
     <motion.header
       className="fixed inset-x-0 top-0 z-50 px-4 py-4"
@@ -31,8 +34,8 @@ export default function HomeNavbar() {
           ))}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <Button href="/login" variant="secondary" className="min-h-11 px-6 text-sm max-[374px]:!px-3">
-            로그인
+          <Button href={isLoggedIn ? "/my-clubs" : "/login"} variant="secondary" className="min-h-11 px-6 text-sm max-[374px]:!px-3">
+            {isLoggedIn ? "마이페이지" : "로그인"}
           </Button>
           <Button href="/" variant="secondary" className="min-h-11 px-6 text-sm max-[374px]:!px-3">
             랜딩으로
