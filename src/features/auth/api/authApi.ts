@@ -43,6 +43,15 @@ export type LoginResponse = {
   accessToken: string;
 };
 
+export interface UserProfile {
+  userId: number;
+  email: string;
+  nickname: string;
+  introduction: string | null;
+  profileImage: string | null;
+  createdAt: string;
+}
+
 export type LoginPayload = LoginRequest & {
   keepSignedIn: boolean;
 };
@@ -136,6 +145,19 @@ export async function signup(payload: SignupPayload): Promise<UserResponse> {
   } catch (error) {
     reportError(error);
   }
+}
+
+export async function getMyProfile(): Promise<UserProfile | null> {
+  const accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY);
+  if (!accessToken || accessToken === MOCK_ACCESS_TOKEN) return null;
+
+  const response = await authClient.get<ApiResponse<UserProfile>>("/api/users/me", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  return response.data.data;
 }
 
 export async function socialLogin(_provider: SocialProvider): Promise<AuthResponse> {

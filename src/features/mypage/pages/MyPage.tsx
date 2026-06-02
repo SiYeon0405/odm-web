@@ -1,8 +1,10 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import axios from "axios";
 import { Link } from "react-router-dom";
 import Footer from "@/components/footer/Footer";
 import HomeNavbar from "@/components/navbar/HomeNavbar";
 import Button from "@/components/ui/Button";
+import { getMyProfile, type UserProfile } from "@/features/auth/api/authApi";
 
 const readingRecords = [
   { title: "스즈메의 문단속", author: "신카이 마코토", progress: 75, tone: "from-[#60463b] to-[#c18b67]" },
@@ -44,8 +46,30 @@ function SectionTitle({ children, href }: { children: ReactNode; href?: string }
 
 export default function MyPage() {
   const accessToken = window.localStorage.getItem("odm_accessToken");
-  const isLoggedIn = Boolean(accessToken && accessToken !== "mock-jwt-access-token");
-  const nickname = window.localStorage.getItem("odm_nickname") || "회원";
+  const hasAccessToken = Boolean(accessToken && accessToken !== "mock-jwt-access-token");
+  const [isLoggedIn, setIsLoggedIn] = useState(hasAccessToken);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(hasAccessToken);
+  const nickname = profile?.nickname || window.localStorage.getItem("odm_nickname") || "회원";
+  const introduction = profile?.introduction || "책은 나를 만드는 가장 조용한 시간입니다.";
+  const createdAt = profile?.createdAt ? profile.createdAt.slice(0, 10).replaceAll("-", ".") : "2026.05.25";
+  const userId = profile?.userId ? `ODM-${profile.userId}` : "ODM-260525";
+
+  useEffect(() => {
+    if (!hasAccessToken) {
+      setIsLoading(false);
+      return;
+    }
+
+    getMyProfile()
+      .then((data) => setProfile(data))
+      .catch((error: unknown) => {
+        if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
+          setIsLoggedIn(false);
+        }
+      })
+      .finally(() => setIsLoading(false));
+  }, [hasAccessToken]);
 
   if (!isLoggedIn) {
     return (
@@ -85,14 +109,16 @@ export default function MyPage() {
           <section className="mt-10 grid gap-8 overflow-hidden rounded-[2rem] border border-coffee/8 bg-[#f5ead9]/92 p-6 shadow-warm lg:grid-cols-[1fr_1.05fr] lg:p-8">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
             <div className="relative shrink-0">
-                <div className="grid size-28 place-items-center rounded-full bg-[#d9c3a6] text-coffee/72"><Icon name="user" className="size-14" /></div>
+                {profile?.profileImage ? <img src={profile.profileImage} alt="" className="size-28 rounded-full object-cover" /> : <div className="grid size-28 place-items-center rounded-full bg-[#d9c3a6] text-coffee/72"><Icon name="user" className="size-14" /></div>}
                 <span className="absolute bottom-1 right-1 grid size-9 place-items-center rounded-full border-2 border-[#f5ead9] bg-espresso text-cream"><Icon name="camera" className="size-5" /></span>
             </div>
             <div className="min-w-0">
                 <h2 className="text-3xl font-bold">{nickname}</h2>
-                <p className="mt-3 leading-7 text-coffee/72">책은 나를 만드는 가장 조용한 시간입니다.</p>
+                {profile?.email ? <p className="mt-1 text-sm text-coffee/58">{profile.email}</p> : null}
+                <p className="mt-3 leading-7 text-coffee/72">{introduction}</p>
                 <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold text-coffee/52">
-                <span>가입일 2026.05.25</span><span>회원번호 ODM-260525</span>
+                <span>가입일 {createdAt}</span><span>회원번호 {userId}</span>
+                {isLoading ? <span aria-live="polite">프로필 불러오는 중...</span> : null}
               </div>
             </div>
           </div>
