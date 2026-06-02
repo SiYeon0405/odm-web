@@ -34,7 +34,7 @@ export default function HomeNavbar() {
           ))}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <Button href={isLoggedIn ? "/my-clubs" : "/login"} variant="secondary" className="min-h-11 px-6 text-sm max-[374px]:!px-3">
+          <Button href={isLoggedIn ? "/mypage" : "/login"} variant="secondary" className="min-h-11 px-6 text-sm max-[374px]:!px-3">
             {isLoggedIn ? "마이페이지" : "로그인"}
           </Button>
           <Button href="/" variant="secondary" className="min-h-11 px-6 text-sm max-[374px]:!px-3">

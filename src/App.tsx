@@ -9,6 +9,7 @@ import ClubDetailPage from "./features/clubs/pages/ClubDetailPage";
 import LoginPage from "./features/auth/pages/LoginPage";
 import SignupCompletePage from "./features/auth/pages/SignupCompletePage";
 import MyClubsPage from "./features/my-clubs/pages/MyClubsPage";
+import MyPage from "./features/mypage/pages/MyPage";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -35,6 +36,7 @@ function App() {
         <Route path="/signup" element={<LoginPage />} />
         <Route path="/signup-complete" element={<SignupCompletePage />} />
         <Route path="/my-clubs" element={<MyClubsPage />} />
+        <Route path="/mypage" element={<MyPage />} />
       </Routes>
     </BrowserRouter>
   );
