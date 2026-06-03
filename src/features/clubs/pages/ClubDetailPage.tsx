@@ -6,12 +6,12 @@ import HomeNavbar from "@/components/navbar/HomeNavbar";
 import Button from "@/components/ui/Button";
 import CancelParticipationModal from "@/features/clubs/components/CancelParticipationModal";
 import { fetchClubById } from "@/features/clubs/api/clubsApi";
-import type { Club } from "@/features/clubs/types";
+import type { ClubDetail } from "@/features/clubs/api/clubsApi";
 import { cancelClubParticipation } from "@/features/my-clubs/api/myClubsApi";
 
 export default function ClubDetailPage() {
   const { clubId } = useParams();
-  const [club, setClub] = useState<Club | undefined>();
+  const [club, setClub] = useState<ClubDetail | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -22,12 +22,19 @@ export default function ClubDetailPage() {
     let active = true;
     const id = Number(clubId);
 
-    fetchClubById(id).then((data) => {
-      if (active) {
-        setClub(data);
-        setIsLoading(false);
-      }
-    });
+    fetchClubById(id)
+      .then((data) => {
+        if (active) {
+          setClub(data);
+          setIsLoading(false);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setClub(undefined);
+          setIsLoading(false);
+        }
+      });
 
     return () => {
       active = false;
@@ -67,18 +74,24 @@ export default function ClubDetailPage() {
               <p className="text-sm font-bold uppercase tracking-[0.18em] text-caramel">Club preview</p>
               <div className="mt-6 flex flex-col gap-7 sm:flex-row">
                 <img
-                  src={club.thumbnail}
+                  src={club.bookCover || club.thumbnail}
                   alt={`${club.title} 책 표지`}
                   className="h-64 w-44 rounded-[1.35rem] object-cover shadow-soft"
                 />
                 <div className="flex-1">
                   <span className="rounded-full bg-linen/52 px-3 py-1.5 text-xs font-bold text-coffee">
-                    {club.category}
+                    {club.recruitmentStatus || club.category}
                   </span>
                   <h1 className="mt-5 text-3xl font-bold">{club.title}</h1>
-                  <p className="mt-2 text-coffee/62">{club.author}</p>
+                  <p className="mt-2 text-coffee/62">
+                    {club.bookTitle || club.title}
+                    {club.bookAuthor || club.author ? ` · ${club.bookAuthor || club.author}` : ""}
+                  </p>
+                  {club.leaderName && <p className="mt-2 text-sm font-bold text-coffee/62">모임장 {club.leaderName}</p>}
                   <p className="mt-6 leading-7 text-coffee/72">{club.description}</p>
-                  <p className="mt-6 text-sm font-bold text-coffee/70">{club.meetingLabel}</p>
+                  <p className="mt-6 text-sm font-bold text-coffee/70">
+                    {club.startDate || club.endDate ? `${club.startDate} ~ ${club.endDate}` : club.meetingLabel}
+                  </p>
                   <p className="mt-2 text-sm font-bold text-caramel">
                     현재 {club.members} / {club.maxMembers}명 참여 중
                   </p>
