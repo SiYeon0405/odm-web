@@ -52,6 +52,40 @@ export interface UserProfile {
   createdAt: string;
 }
 
+export type UpdateMyProfileRequest = {
+  nickname: string;
+  introduction: string | null;
+};
+
+export type MyClub = {
+  id?: number;
+  clubId?: number;
+  name?: string;
+  title?: string;
+  description?: string;
+  status?: string;
+  [key: string]: unknown;
+};
+
+export type MyPost = {
+  id?: number;
+  postId?: number;
+  title?: string;
+  content?: string;
+  createdAt?: string;
+  [key: string]: unknown;
+};
+
+export type MyReview = {
+  id?: number;
+  reviewId?: number;
+  title?: string;
+  bookTitle?: string;
+  content?: string;
+  createdAt?: string;
+  [key: string]: unknown;
+};
+
 export type LoginPayload = LoginRequest & {
   keepSignedIn: boolean;
 };
@@ -80,6 +114,15 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || DEFAULT_BASE_URL;
 const authClient = axios.create({
   baseURL: BASE_URL,
 });
+
+function getAuthHeaders() {
+  const accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY);
+  if (!accessToken || accessToken === MOCK_ACCESS_TOKEN) return null;
+
+  return {
+    Authorization: `Bearer ${accessToken}`,
+  };
+}
 
 function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError<ApiResponse<unknown>>(error)) {
@@ -148,16 +191,93 @@ export async function signup(payload: SignupPayload): Promise<UserResponse> {
 }
 
 export async function getMyProfile(): Promise<UserProfile | null> {
-  const accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY);
-  if (!accessToken || accessToken === MOCK_ACCESS_TOKEN) return null;
+  const headers = getAuthHeaders();
+  if (!headers) return null;
 
   const response = await authClient.get<ApiResponse<UserProfile>>("/api/users/me", {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers,
   });
 
   return response.data.data;
+}
+
+export async function updateMyProfile(payload: UpdateMyProfileRequest): Promise<UserProfile> {
+  const headers = getAuthHeaders();
+  if (!headers) throw new Error("로그인이 필요합니다.");
+
+  const response = await authClient.put<ApiResponse<UserProfile>>("/api/users/me", payload, {
+    headers,
+  });
+
+  window.localStorage.setItem(NICKNAME_KEY, response.data.data.nickname);
+  window.dispatchEvent(new Event("odm-auth-change"));
+
+  return response.data.data;
+}
+
+export async function uploadMyProfileImage(image: File): Promise<UserProfile> {
+  const headers = getAuthHeaders();
+  if (!headers) throw new Error("로그인이 필요합니다.");
+
+  const formData = new FormData();
+  formData.append("image", image);
+
+  const response = await authClient.post<ApiResponse<UserProfile>>("/api/users/me/profile-image", formData, {
+    headers,
+  });
+
+  return response.data.data;
+}
+
+export async function fetchMyClubs(page = 0, size = 20): Promise<MyClub[]> {
+  const headers = getAuthHeaders();
+  if (!headers) return [];
+
+  const response = await authClient.get<ApiResponse<MyClub[] | { clubs?: MyClub[]; content?: MyClub[] }>>("/api/users/me/clubs", {
+    headers,
+    params: { page, size },
+  });
+
+  const data = response.data.data;
+  return Array.isArray(data) ? data : data.clubs || data.content || [];
+}
+
+export async function fetchMyPosts(page = 0, size = 20): Promise<MyPost[]> {
+  const headers = getAuthHeaders();
+  if (!headers) return [];
+
+  const response = await authClient.get<ApiResponse<MyPost[] | { posts?: MyPost[]; content?: MyPost[] }>>("/api/users/me/posts", {
+    headers,
+    params: { page, size },
+  });
+
+  const data = response.data.data;
+  return Array.isArray(data) ? data : data.posts || data.content || [];
+}
+
+export async function fetchMyReviews(page = 0, size = 20): Promise<MyReview[]> {
+  const headers = getAuthHeaders();
+  if (!headers) return [];
+
+  const response = await authClient.get<ApiResponse<{ reviews?: MyReview[] } | MyReview[]>>("/api/users/me/reviews", {
+    headers,
+    params: { page, size },
+  });
+
+  const data = response.data.data;
+  return Array.isArray(data) ? data : data.reviews || [];
+}
+
+export async function deleteMyAccount(): Promise<ApiResponse<unknown>> {
+  const headers = getAuthHeaders();
+  if (!headers) throw new Error("로그인이 필요합니다.");
+
+  const response = await authClient.delete<ApiResponse<unknown>>("/api/users/me", {
+    headers,
+  });
+
+  signOutMockAccount();
+  return response.data;
 }
 
 export async function socialLogin(_provider: SocialProvider): Promise<AuthResponse> {

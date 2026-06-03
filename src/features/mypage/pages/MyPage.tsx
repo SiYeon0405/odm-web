@@ -1,10 +1,22 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ChangeEvent, type ReactNode } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import Footer from "@/components/footer/Footer";
 import HomeNavbar from "@/components/navbar/HomeNavbar";
 import Button from "@/components/ui/Button";
-import { getMyProfile, type UserProfile } from "@/features/auth/api/authApi";
+import {
+  deleteMyAccount,
+  fetchMyClubs,
+  fetchMyPosts,
+  fetchMyReviews,
+  getMyProfile,
+  updateMyProfile,
+  uploadMyProfileImage,
+  type MyClub,
+  type MyPost,
+  type MyReview,
+  type UserProfile,
+} from "@/features/auth/api/authApi";
 
 const readingRecords = [
   { title: "스즈메의 문단속", author: "신카이 마코토", progress: 75, tone: "from-[#60463b] to-[#c18b67]" },
@@ -44,16 +56,42 @@ function SectionTitle({ children, href }: { children: ReactNode; href?: string }
   );
 }
 
+type MyPageItem = Partial<MyClub & MyPost & MyReview> & {
+  author?: string;
+  progress?: number;
+  tone?: string;
+};
+
+function getItemId(item: MyPageItem, fallback: number) {
+  return item.id ?? item.clubId ?? item.postId ?? item.reviewId ?? fallback;
+}
+
+function getItemTitle(item: MyPageItem, fallback: string) {
+  return item.title || item.name || item.bookTitle || fallback;
+}
+
+function getItemDescription(item: MyPageItem) {
+  return item.description || item.content || item.status || "";
+}
+
 export default function MyPage() {
   const accessToken = window.localStorage.getItem("odm_accessToken");
   const hasAccessToken = Boolean(accessToken && accessToken !== "mock-jwt-access-token");
   const [isLoggedIn, setIsLoggedIn] = useState(hasAccessToken);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [clubs, setClubs] = useState<MyClub[]>([]);
+  const [posts, setPosts] = useState<MyPost[]>([]);
+  const [reviews, setReviews] = useState<MyReview[]>([]);
   const [isLoading, setIsLoading] = useState(hasAccessToken);
+  const [isEditing, setIsEditing] = useState(false);
+  const [nicknameInput, setNicknameInput] = useState("");
+  const [introductionInput, setIntroductionInput] = useState("");
+  const [message, setMessage] = useState("");
   const nickname = profile?.nickname || window.localStorage.getItem("odm_nickname") || "회원";
   const introduction = profile?.introduction || "책은 나를 만드는 가장 조용한 시간입니다.";
   const createdAt = profile?.createdAt ? profile.createdAt.slice(0, 10).replaceAll("-", ".") : "2026.05.25";
   const userId = profile?.userId ? `ODM-${profile.userId}` : "ODM-260525";
+  const reviewItems: MyPageItem[] = reviews.length ? reviews : readingRecords;
 
   useEffect(() => {
     if (!hasAccessToken) {
@@ -61,15 +99,64 @@ export default function MyPage() {
       return;
     }
 
-    getMyProfile()
-      .then((data) => setProfile(data))
+    Promise.all([getMyProfile(), fetchMyClubs(), fetchMyPosts(), fetchMyReviews()])
+      .then(([profileData, clubData, postData, reviewData]) => {
+        setProfile(profileData);
+        setNicknameInput(profileData?.nickname || "");
+        setIntroductionInput(profileData?.introduction || "");
+        setClubs(clubData);
+        setPosts(postData);
+        setReviews(reviewData);
+      })
       .catch((error: unknown) => {
         if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
           setIsLoggedIn(false);
+          return;
         }
+        setMessage("마이페이지 정보를 불러오지 못했습니다.");
       })
       .finally(() => setIsLoading(false));
   }, [hasAccessToken]);
+
+  async function handleSaveProfile() {
+    try {
+      const updatedProfile = await updateMyProfile({
+        nickname: nicknameInput.trim() || nickname,
+        introduction: introductionInput.trim() || null,
+      });
+      setProfile(updatedProfile);
+      setIsEditing(false);
+      setMessage("프로필이 수정되었습니다.");
+    } catch {
+      setMessage("프로필 수정에 실패했습니다.");
+    }
+  }
+
+  async function handleProfileImageChange(event: ChangeEvent<HTMLInputElement>) {
+    const image = event.target.files?.[0];
+    if (!image) return;
+
+    try {
+      const updatedProfile = await uploadMyProfileImage(image);
+      setProfile(updatedProfile);
+      setMessage("프로필 이미지가 변경되었습니다.");
+    } catch {
+      setMessage("프로필 이미지 업로드에 실패했습니다.");
+    } finally {
+      event.target.value = "";
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (!window.confirm("정말 회원 탈퇴하시겠습니까?")) return;
+
+    try {
+      await deleteMyAccount();
+      setIsLoggedIn(false);
+    } catch {
+      setMessage("회원 탈퇴에 실패했습니다.");
+    }
+  }
 
   if (!isLoggedIn) {
     return (
@@ -101,7 +188,7 @@ export default function MyPage() {
               <p className="mt-5 text-lg leading-8 text-coffee/70">나의 독서 기록과 모임 활동을 한눈에 확인해보세요.</p>
             </div>
           <div className="flex items-center gap-2 text-coffee/68">
-              <button type="button" aria-label="설정" className="grid size-12 place-items-center rounded-full border border-coffee/10 bg-white/62 shadow-warm"><Icon name="settings" /></button>
+              <button type="button" aria-label="설정" onClick={() => setIsEditing((value) => !value)} className="grid size-12 place-items-center rounded-full border border-coffee/10 bg-white/62 shadow-warm"><Icon name="settings" /></button>
               <button type="button" aria-label="알림" className="grid size-12 place-items-center rounded-full border border-coffee/10 bg-white/62 shadow-warm"><Icon name="bell" /></button>
           </div>
         </header>
@@ -110,15 +197,33 @@ export default function MyPage() {
             <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
             <div className="relative shrink-0">
                 {profile?.profileImage ? <img src={profile.profileImage} alt="" className="size-28 rounded-full object-cover" /> : <div className="grid size-28 place-items-center rounded-full bg-[#d9c3a6] text-coffee/72"><Icon name="user" className="size-14" /></div>}
-                <span className="absolute bottom-1 right-1 grid size-9 place-items-center rounded-full border-2 border-[#f5ead9] bg-espresso text-cream"><Icon name="camera" className="size-5" /></span>
+                <label className="absolute bottom-1 right-1 grid size-9 cursor-pointer place-items-center rounded-full border-2 border-[#f5ead9] bg-espresso text-cream">
+                  <Icon name="camera" className="size-5" />
+                  <input type="file" accept="image/*" onChange={handleProfileImageChange} className="sr-only" />
+                </label>
             </div>
             <div className="min-w-0">
-                <h2 className="text-3xl font-bold">{nickname}</h2>
-                {profile?.email ? <p className="mt-1 text-sm text-coffee/58">{profile.email}</p> : null}
-                <p className="mt-3 leading-7 text-coffee/72">{introduction}</p>
+                {isEditing ? (
+                  <div className="space-y-3">
+                    <input value={nicknameInput} onChange={(event) => setNicknameInput(event.target.value)} className="w-full rounded-2xl border border-coffee/12 bg-white/70 px-4 py-3 text-lg font-bold outline-none" />
+                    <textarea value={introductionInput} onChange={(event) => setIntroductionInput(event.target.value)} rows={3} className="w-full resize-none rounded-2xl border border-coffee/12 bg-white/70 px-4 py-3 text-sm leading-6 outline-none" />
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={handleSaveProfile} className="rounded-full bg-espresso px-4 py-2 text-xs font-bold text-cream">저장</button>
+                      <button type="button" onClick={() => setIsEditing(false)} className="rounded-full border border-coffee/12 px-4 py-2 text-xs font-bold text-coffee/70">취소</button>
+                      <button type="button" onClick={handleDeleteAccount} className="rounded-full border border-red-300 px-4 py-2 text-xs font-bold text-red-600">회원 탈퇴</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <h2 className="text-3xl font-bold">{nickname}</h2>
+                    {profile?.email ? <p className="mt-1 text-sm text-coffee/58">{profile.email}</p> : null}
+                    <p className="mt-3 leading-7 text-coffee/72">{introduction}</p>
+                  </>
+                )}
                 <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold text-coffee/52">
                 <span>가입일 {createdAt}</span><span>회원번호 {userId}</span>
                 {isLoading ? <span aria-live="polite">프로필 불러오는 중...</span> : null}
+                {message ? <span aria-live="polite">{message}</span> : null}
               </div>
             </div>
           </div>
@@ -132,24 +237,24 @@ export default function MyPage() {
           </section>
 
           <section className="mt-10 rounded-[2rem] border border-coffee/8 bg-ivory/66 p-6 shadow-warm lg:p-8">
-          <SectionTitle>독서 기록</SectionTitle>
+          <SectionTitle>내 독후감</SectionTitle>
             <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {readingRecords.map((book) => (
-                <article key={book.title} className="rounded-[1.4rem] border border-coffee/8 bg-white/52 p-4">
-                  <div className={`grid h-52 place-items-end rounded-[1rem] bg-gradient-to-br ${book.tone} p-4 shadow-soft`}>
-                    <p className="text-base font-bold leading-6 text-ivory">{book.title}</p>
+            {reviewItems.slice(0, 4).map((book, index) => (
+                <article key={getItemId(book, index)} className="rounded-[1.4rem] border border-coffee/8 bg-white/52 p-4">
+                  <div className={`grid h-52 place-items-end rounded-[1rem] bg-gradient-to-br ${book.tone || "from-[#60463b] to-[#c18b67]"} p-4 shadow-soft`}>
+                    <p className="text-base font-bold leading-6 text-ivory">{getItemTitle(book, `Review ${index + 1}`)}</p>
                 </div>
-                  <h3 className="mt-4 line-clamp-2 font-bold leading-6">{book.title}</h3><p className="mt-1 text-sm text-coffee/58">{book.author}</p>
-                <div className="mt-3 h-1.5 rounded-full bg-linen"><div className="h-full rounded-full bg-caramel" style={{ width: `${book.progress}%` }} /></div>
-                  <p className="mt-2 text-right text-xs font-bold text-caramel">{book.progress}%</p>
+                  <h3 className="mt-4 line-clamp-2 font-bold leading-6">{getItemTitle(book, `Review ${index + 1}`)}</h3><p className="mt-1 line-clamp-2 text-sm text-coffee/58">{getItemDescription(book) || book.author}</p>
+                <div className="mt-3 h-1.5 rounded-full bg-linen"><div className="h-full rounded-full bg-caramel" style={{ width: `${book.progress || 100}%` }} /></div>
+                  <p className="mt-2 text-right text-xs font-bold text-caramel">{book.progress || 100}%</p>
               </article>
             ))}
           </div>
         </section>
 
           <div className="mt-10 grid gap-5 lg:grid-cols-2">
-            <section className="rounded-[2rem] border border-coffee/8 bg-ivory/66 p-6 shadow-warm"><SectionTitle href="/my-clubs">참여 중인 모임</SectionTitle><div className="mt-5 h-36 rounded-[1.3rem] border border-dashed border-coffee/16 bg-[#f9f0e4]" /></section>
-            <section className="rounded-[2rem] border border-coffee/8 bg-ivory/66 p-6 shadow-warm"><SectionTitle>완료 된 모임</SectionTitle><div className="mt-5 h-36 rounded-[1.3rem] border border-dashed border-coffee/16 bg-[#f9f0e4]" /></section>
+            <section className="rounded-[2rem] border border-coffee/8 bg-ivory/66 p-6 shadow-warm"><SectionTitle href="/my-clubs">참여 중인 모임</SectionTitle><div className="mt-5 min-h-36 rounded-[1.3rem] border border-dashed border-coffee/16 bg-[#f9f0e4] p-4">{clubs.slice(0, 3).map((club, index) => <div key={getItemId(club, index)} className="border-b border-coffee/8 py-2 last:border-b-0"><p className="font-bold">{getItemTitle(club, `Club ${index + 1}`)}</p><p className="mt-1 line-clamp-1 text-sm text-coffee/58">{getItemDescription(club)}</p></div>)}</div></section>
+            <section className="rounded-[2rem] border border-coffee/8 bg-ivory/66 p-6 shadow-warm"><SectionTitle>내 게시글</SectionTitle><div className="mt-5 min-h-36 rounded-[1.3rem] border border-dashed border-coffee/16 bg-[#f9f0e4] p-4">{posts.slice(0, 3).map((post, index) => <div key={getItemId(post, index)} className="border-b border-coffee/8 py-2 last:border-b-0"><p className="font-bold">{getItemTitle(post, `Post ${index + 1}`)}</p><p className="mt-1 line-clamp-1 text-sm text-coffee/58">{getItemDescription(post)}</p></div>)}</div></section>
           </div>
         </section>
       </main>
