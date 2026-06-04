@@ -14,6 +14,7 @@ type ApiResponse<T> = {
 
 type RecruitmentResponse = Partial<Recruitment> & {
   id?: number;
+  recruitmentPostId?: number;
   status?: RecruitmentStatus;
   content?: string;
 };
@@ -53,7 +54,7 @@ function unwrapApiResponse<T>(responseData: ApiResponse<T> | T): T {
 
 function normalizeRecruitment(data: RecruitmentResponse): Recruitment {
   return {
-    recruitmentId: data.recruitmentId ?? data.id ?? 0,
+    recruitmentId: data.recruitmentId ?? data.recruitmentPostId ?? data.id ?? 0,
     clubId: data.clubId,
     title: data.title ?? "",
     description: data.description ?? data.content ?? "",
