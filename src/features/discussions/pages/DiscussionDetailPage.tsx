@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Footer from "@/components/footer/Footer";
 import HomeNavbar from "@/components/navbar/HomeNavbar";
+import CommentForm from "@/features/comments/components/CommentForm";
+import CommentList from "@/features/comments/components/CommentList";
+import { createComment, getCommentErrorMessage, getCommentsByDiscussionId } from "@/features/comments/api/commentsApi";
+import type { Comment } from "@/features/comments/types";
 import { getDiscussionById, getDiscussionErrorMessage } from "@/features/discussions/api/discussionsApi";
 import type { Discussion } from "@/features/discussions/types";
 
@@ -10,6 +14,10 @@ export default function DiscussionDetailPage() {
   const [discussion, setDiscussion] = useState<Discussion | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [isCommentsLoading, setIsCommentsLoading] = useState(false);
+  const [commentsErrorMessage, setCommentsErrorMessage] = useState("");
+  const [isCommentSubmitting, setIsCommentSubmitting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -42,6 +50,44 @@ export default function DiscussionDetailPage() {
     };
   }, [discussionId]);
 
+  const loadComments = async (id: number) => {
+    setIsCommentsLoading(true);
+    setCommentsErrorMessage("");
+    try {
+      const commentsPage = await getCommentsByDiscussionId(id, { page: 0, size: 20 });
+      setComments(commentsPage.content);
+    } catch (error) {
+      setCommentsErrorMessage(getCommentErrorMessage(error));
+      setComments([]);
+    } finally {
+      setIsCommentsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const id = Number(discussionId);
+    if (!discussionId || Number.isNaN(id)) return;
+
+    loadComments(id);
+  }, [discussionId]);
+
+  const handleCreateComment = async (content: string) => {
+    const id = Number(discussionId);
+    if (!discussionId || Number.isNaN(id) || isCommentSubmitting) return;
+
+    setIsCommentSubmitting(true);
+    setCommentsErrorMessage("");
+    try {
+      await createComment(id, content);
+      await loadComments(id);
+    } catch (error) {
+      setCommentsErrorMessage(getCommentErrorMessage(error));
+      throw error;
+    } finally {
+      setIsCommentSubmitting(false);
+    }
+  };
+
   return (
     <>
       <main className="home-page min-h-screen bg-cream font-sans text-espresso">
@@ -72,6 +118,13 @@ export default function DiscussionDetailPage() {
               <h1 className="mt-5 text-3xl font-bold">{discussion.title}</h1>
               <p className="mt-6 whitespace-pre-wrap leading-7 text-coffee/72">{discussion.content}</p>
             </article>
+          )}
+          {!isLoading && !errorMessage && discussion && (
+            <section className="mt-8 rounded-2xl border border-coffee/10 bg-ivory/70 p-6 shadow-warm">
+              <h2 className="text-xl font-bold">댓글</h2>
+              <CommentForm onSubmit={handleCreateComment} isSubmitting={isCommentSubmitting} />
+              <CommentList comments={comments} isLoading={isCommentsLoading} error={commentsErrorMessage} />
+            </section>
           )}
         </section>
       </main>
