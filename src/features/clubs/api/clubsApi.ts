@@ -48,6 +48,7 @@ type ClubDetailResponse = {
   endDate?: string;
   createdAt?: string;
   hasStarted?: boolean;
+  isJoined?: boolean;
   book?: {
     title?: string;
     author?: string;
@@ -55,6 +56,14 @@ type ClubDetailResponse = {
     coverImage?: string;
     imageUrl?: string;
   };
+};
+
+export type ClubMemberResponse = {
+  id?: number;
+  clubId?: number;
+  userId?: number;
+  role?: string;
+  joinedAt?: string;
 };
 
 type ClubPageResponse = {
@@ -140,6 +149,20 @@ export async function fetchClubById(clubId: number): Promise<ClubDetail | undefi
   return normalizeClubDetail(payload);
 }
 
+export async function joinClub(clubId: number): Promise<ClubMemberResponse | undefined> {
+  const response = await clubsClient.post<ApiResponse<ClubMemberResponse>>(`/api/clubs/${clubId}/join`, undefined, {
+    headers: getAuthHeaders(),
+  });
+
+  return response.data.data;
+}
+
+export async function leaveClub(clubId: number): Promise<void> {
+  await clubsClient.delete(`/api/clubs/${clubId}/leave`, {
+    headers: getAuthHeaders(),
+  });
+}
+
 function normalizeClubDetail(data: ClubDetailResponse): ClubDetail {
   const id = data.clubId ?? data.id ?? 0;
   const bookTitle = data.book?.title ?? data.bookTitle ?? data.title ?? data.name ?? data.clubName ?? "";
@@ -164,6 +187,7 @@ function normalizeClubDetail(data: ClubDetailResponse): ClubDetail {
     meetingLabel: startDate && endDate ? `${startDate} ~ ${endDate}` : startDate || endDate,
     createdAt: data.createdAt ?? startDate,
     hasStarted: data.hasStarted,
+    isJoined: data.isJoined,
     leaderName: data.leaderName ?? data.ownerName ?? data.hostName ?? data.managerName,
     recruitmentStatus: data.recruitmentStatus ?? data.status,
     bookTitle,

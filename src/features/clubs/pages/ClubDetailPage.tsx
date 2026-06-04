@@ -5,9 +5,10 @@ import Footer from "@/components/footer/Footer";
 import HomeNavbar from "@/components/navbar/HomeNavbar";
 import Button from "@/components/ui/Button";
 import CancelParticipationModal from "@/features/clubs/components/CancelParticipationModal";
-import { fetchClubById } from "@/features/clubs/api/clubsApi";
+import JoinClubButton from "@/features/clubs/components/JoinClubButton";
+import { fetchClubById, joinClub, leaveClub } from "@/features/clubs/api/clubsApi";
 import type { ClubDetail } from "@/features/clubs/api/clubsApi";
-import { cancelClubParticipation } from "@/features/my-clubs/api/myClubsApi";
+import axios from "axios";
 
 export default function ClubDetailPage() {
   const { clubId } = useParams();
@@ -15,17 +16,24 @@ export default function ClubDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [hasCancelled, setHasCancelled] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isJoined, setIsJoined] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
 
   useEffect(() => {
     let active = true;
     const id = Number(clubId);
+    if (!clubId || Number.isNaN(id)) {
+      setClub(undefined);
+      setIsLoading(false);
+      return;
+    }
 
     fetchClubById(id)
       .then((data) => {
         if (active) {
           setClub(data);
+          setIsJoined(data?.isJoined ?? false);
           setIsLoading(false);
         }
       })
@@ -48,17 +56,65 @@ export default function ClubDetailPage() {
     return () => window.clearTimeout(timeoutId);
   }, [toastVisible]);
 
-  const handleCancelParticipation = async () => {
-    if (!club || club.hasStarted || isCancelling) return;
+  const getClubActionErrorMessage = (error: unknown) => {
+    if (axios.isAxiosError(error)) {
+      switch (error.response?.status) {
+        case 401:
+          return "로그인이 필요합니다.";
+        case 403:
+          return "참여 권한이 없습니다.";
+        case 404:
+          return "모임을 찾을 수 없습니다.";
+        case 409:
+          return "이미 참여했거나 현재 참여/탈퇴할 수 없는 모임입니다.";
+        case 400:
+          return "정원이 가득 찼거나 요청이 올바르지 않습니다.";
+        default:
+          return "요청 처리 중 오류가 발생했습니다.";
+      }
+    }
 
-    setIsCancelling(true);
-    await cancelClubParticipation(club.id);
-    const updatedClub = await fetchClubById(club.id);
+    return "요청 처리 중 오류가 발생했습니다.";
+  };
+
+  const refreshClub = async (id: number, joinedFallback: boolean) => {
+    const updatedClub = await fetchClubById(id);
     setClub(updatedClub);
-    setCancelModalOpen(false);
-    setHasCancelled(true);
-    setToastVisible(true);
-    setIsCancelling(false);
+    setIsJoined(updatedClub?.isJoined ?? joinedFallback);
+  };
+
+  const handleJoinClub = async () => {
+    if (!club || club.hasStarted || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      await joinClub(club.id);
+      setIsJoined(true);
+      await refreshClub(club.id, true);
+    } catch (error) {
+      window.alert(getClubActionErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelParticipation = async () => {
+    if (!club || club.hasStarted || isSubmitting || isCancelling) return;
+
+    setIsSubmitting(true);
+    setIsCancelling(true);
+    try {
+      await leaveClub(club.id);
+      setIsJoined(false);
+      await refreshClub(club.id, false);
+      setCancelModalOpen(false);
+      setToastVisible(true);
+    } catch (error) {
+      window.alert(getClubActionErrorMessage(error));
+    } finally {
+      setIsCancelling(false);
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -105,16 +161,17 @@ export default function ClubDetailPage() {
                   <Button href="/clubs" variant="secondary" className="min-h-12 px-6 text-sm">
                     목록으로 돌아가기
                   </Button>
-                  <motion.button
-                    type="button"
-                    onClick={() => setCancelModalOpen(true)}
-                    disabled={Boolean(club.hasStarted) || hasCancelled}
+                  <JoinClubButton
+                    isJoined={isJoined}
+                    isSubmitting={isSubmitting}
+                    onClick={() => (isJoined ? setCancelModalOpen(true) : handleJoinClub())}
+                    disabled={Boolean(club.hasStarted) || isSubmitting}
                     className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#ae8175]/34 bg-[#c9a296]/40 px-6 py-3 text-sm font-bold leading-none text-[#70493f] shadow-[0_10px_24px_rgba(112,73,63,.08)] transition duration-200 hover:bg-[#b98a7d]/55 hover:text-[#633f36] disabled:cursor-not-allowed disabled:border-coffee/10 disabled:bg-linen/30 disabled:text-coffee/45 disabled:shadow-none"
-                    whileHover={club.hasStarted || hasCancelled ? undefined : { y: -2 }}
-                    whileTap={club.hasStarted || hasCancelled ? undefined : { scale: 0.98 }}
+                    whileHover={club.hasStarted || isSubmitting ? undefined : { y: -2 }}
+                    whileTap={club.hasStarted || isSubmitting ? undefined : { scale: 0.98 }}
                   >
                     모임 참가 취소
-                  </motion.button>
+                  </JoinClubButton>
                 </div>
                 {club.hasStarted && (
                   <p className="mt-3 text-sm font-bold text-coffee/54">
