@@ -136,7 +136,7 @@ export async function getDiscussionsByClubId(
   const page = params.page ?? 0;
   const size = params.size ?? 20;
   const response = await discussionsClient.get<ApiResponse<DiscussionPageResponse> | DiscussionPageResponse>(
-    `/api/clubs/${clubId}/discussions`,
+    `/api/discussions/clubs/${clubId}`,
     {
       headers: getAuthHeaders(),
       params,
