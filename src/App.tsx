@@ -6,6 +6,8 @@ import SearchPage from "./pages/SearchPage";
 import BookDetailPage from "./pages/BookDetailPage";
 import ClubsPage from "./features/clubs/pages/ClubsPage";
 import ClubDetailPage from "./features/clubs/pages/ClubDetailPage";
+import RecruitmentListPage from "./features/recruitments/pages/RecruitmentListPage";
+import RecruitmentDetailPage from "./features/recruitments/pages/RecruitmentDetailPage";
 import LoginPage from "./features/auth/pages/LoginPage";
 import SignupCompletePage from "./features/auth/pages/SignupCompletePage";
 import MyClubsPage from "./features/my-clubs/pages/MyClubsPage";
@@ -32,6 +34,8 @@ function App() {
         <Route path="/books/:isbn13" element={<BookDetailPage />} />
         <Route path="/clubs" element={<ClubsPage />} />
         <Route path="/clubs/:clubId" element={<ClubDetailPage />} />
+        <Route path="/recruitments" element={<RecruitmentListPage />} />
+        <Route path="/recruitments/:recruitmentId" element={<RecruitmentDetailPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<LoginPage />} />
         <Route path="/signup-complete" element={<SignupCompletePage />} />
