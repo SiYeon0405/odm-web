@@ -1,8 +1,9 @@
 import axios from "axios";
-import { mockClubs } from "@/features/clubs/data/mockClubs";
 import type { Club } from "@/features/clubs/types";
 
 const MEMBER_ADJUSTMENTS_KEY = "odm_clubMemberAdjustments";
+const ACCESS_TOKEN_KEY = "odm_accessToken";
+const MOCK_ACCESS_TOKEN = "mock-jwt-access-token";
 const DEFAULT_BASE_URL = "http://localhost:8080";
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || DEFAULT_BASE_URL;
 
@@ -56,6 +57,12 @@ type ClubDetailResponse = {
   };
 };
 
+type ClubPageResponse = {
+  content?: ClubDetailResponse[];
+  totalElements?: number;
+  totalPages?: number;
+};
+
 export type ClubDetail = Club & {
   leaderName?: string;
   recruitmentStatus?: string;
@@ -66,9 +73,26 @@ export type ClubDetail = Club & {
   endDate?: string;
 };
 
+export type ClubPage = {
+  clubs: Club[];
+  totalElements: number;
+  totalPages: number;
+};
+
 const clubsClient = axios.create({
   baseURL: BASE_URL,
 });
+
+function getAuthHeaders() {
+  if (typeof window === "undefined") return undefined;
+
+  const accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY);
+  if (!accessToken || accessToken === MOCK_ACCESS_TOKEN) return undefined;
+
+  return {
+    Authorization: `Bearer ${accessToken}`,
+  };
+}
 
 function getMemberAdjustments(): Record<number, number> {
   if (typeof window === "undefined") return {};
@@ -84,13 +108,6 @@ function getMemberAdjustments(): Record<number, number> {
   }
 }
 
-function withCurrentMembers(club: Club): Club {
-  const adjustment = getMemberAdjustments()[club.id] ?? 0;
-  const members = Math.min(club.maxMembers, Math.max(0, club.members + adjustment));
-
-  return { ...club, members };
-}
-
 export function adjustClubMemberCount(clubId: number, amount: number): void {
   if (typeof window === "undefined") return;
 
@@ -99,13 +116,25 @@ export function adjustClubMemberCount(clubId: number, amount: number): void {
   window.localStorage.setItem(MEMBER_ADJUSTMENTS_KEY, JSON.stringify(adjustments));
 }
 
-export async function fetchClubs(): Promise<Club[]> {
-  // This boundary can later be replaced with a request to `/api/clubs`.
-  return Promise.resolve(mockClubs.map(withCurrentMembers));
+export async function fetchClubs(page = 0, size = 20): Promise<ClubPage> {
+  const response = await clubsClient.get<ApiResponse<ClubPageResponse>>("/api/clubs", {
+    headers: getAuthHeaders(),
+    params: { page, size },
+  });
+  const payload = response.data.data;
+  const content = payload?.content ?? [];
+
+  return {
+    clubs: content.map(normalizeClubDetail),
+    totalElements: payload?.totalElements ?? content.length,
+    totalPages: payload?.totalPages ?? 0,
+  };
 }
 
 export async function fetchClubById(clubId: number): Promise<ClubDetail | undefined> {
-  const response = await clubsClient.get<ApiResponse<ClubDetailResponse> | ClubDetailResponse>(`/api/clubs/${clubId}`);
+  const response = await clubsClient.get<ApiResponse<ClubDetailResponse> | ClubDetailResponse>(`/api/clubs/${clubId}`, {
+    headers: getAuthHeaders(),
+  });
   const payload = "data" in response.data && response.data.data ? response.data.data : response.data;
 
   return normalizeClubDetail(payload);
