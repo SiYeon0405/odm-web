@@ -1,14 +1,15 @@
 import { motion } from "framer-motion";
-import { memo, useCallback, type MouseEvent } from "react";
+import { memo, useCallback, type KeyboardEvent, type MouseEvent } from "react";
 import JoinClubButton from "@/features/clubs/components/JoinClubButton";
 import type { Club } from "@/features/clubs/types";
 
 type ClubCardProps = {
   club: Club;
   onJoin: (club: Club) => void;
+  onOpen?: (club: Club) => void;
 };
 
-function ClubCard({ club, onJoin }: ClubCardProps) {
+function ClubCard({ club, onJoin, onOpen }: ClubCardProps) {
   const remaining = club.maxMembers - club.members;
   const handleJoin = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -17,9 +18,25 @@ function ClubCard({ club, onJoin }: ClubCardProps) {
     },
     [club, onJoin],
   );
+  const handleOpen = useCallback(() => {
+    onOpen?.(club);
+  }, [club, onOpen]);
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLElement>) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        onOpen?.(club);
+      }
+    },
+    [club, onOpen],
+  );
 
   return (
     <motion.article
+      role={onOpen ? "button" : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+      onClick={handleOpen}
+      onKeyDown={handleKeyDown}
       className="club-card flex h-full flex-col rounded-[1.75rem] border border-coffee/10 bg-ivory/70 p-4 shadow-warm backdrop-blur-xl"
       whileHover={{ y: -7, scale: 1.01 }}
       transition={{ duration: 0.26 }}
