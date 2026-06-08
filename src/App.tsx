@@ -12,6 +12,8 @@ import DiscussionCreatePage from "./features/discussions/pages/DiscussionCreateP
 import DiscussionListPage from "./features/discussions/pages/DiscussionListPage";
 import DiscussionDetailPage from "./features/discussions/pages/DiscussionDetailPage";
 import DiscussionEditPage from "./features/discussions/pages/DiscussionEditPage";
+import ReviewCreatePage from "./features/reviews/pages/ReviewCreatePage";
+import ReviewDetailPage from "./features/reviews/pages/ReviewDetailPage";
 import LoginPage from "./features/auth/pages/LoginPage";
 import SignupCompletePage from "./features/auth/pages/SignupCompletePage";
 import MyClubsPage from "./features/my-clubs/pages/MyClubsPage";
@@ -44,6 +46,8 @@ function App() {
         <Route path="/clubs/:clubId/discussions" element={<DiscussionListPage />} />
         <Route path="/discussions/:discussionId/edit" element={<DiscussionEditPage />} />
         <Route path="/discussions/:discussionId" element={<DiscussionDetailPage />} />
+        <Route path="/clubs/:clubId/reviews/new" element={<ReviewCreatePage />} />
+        <Route path="/reviews/:reviewId" element={<ReviewDetailPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<LoginPage />} />
         <Route path="/signup-complete" element={<SignupCompletePage />} />
