@@ -31,6 +31,17 @@ type GetDiscussionsParams = {
   size?: number;
 };
 
+type CreateDiscussionRequest = {
+  clubId: number;
+  title: string;
+  content: string;
+};
+
+type UpdateDiscussionRequest = {
+  title: string;
+  content: string;
+};
+
 const discussionsClient = axios.create({
   baseURL: BASE_URL,
 });
@@ -161,6 +172,49 @@ export async function getDiscussionById(discussionId: number): Promise<Discussio
   const payload = unwrapApiResponse(response.data);
 
   return normalizeDiscussion(payload);
+}
+
+export async function createDiscussion(request: CreateDiscussionRequest): Promise<Discussion> {
+  const response = await discussionsClient.post<ApiResponse<DiscussionResponse> | DiscussionResponse>(
+    "/api/discussions",
+    request,
+    {
+      headers: getAuthHeaders(),
+    },
+  );
+  const payload = unwrapApiResponse(response.data);
+
+  return normalizeDiscussion(payload);
+}
+
+export async function updateDiscussion(
+  discussionId: number,
+  request: UpdateDiscussionRequest,
+): Promise<Discussion> {
+  if (!discussionId || Number.isNaN(discussionId)) {
+    throw new Error("Invalid discussion id.");
+  }
+
+  const response = await discussionsClient.put<ApiResponse<DiscussionResponse> | DiscussionResponse>(
+    `/api/discussions/${discussionId}`,
+    request,
+    {
+      headers: getAuthHeaders(),
+    },
+  );
+  const payload = unwrapApiResponse(response.data);
+
+  return normalizeDiscussion(payload);
+}
+
+export async function deleteDiscussion(discussionId: number): Promise<void> {
+  if (!discussionId || Number.isNaN(discussionId)) {
+    throw new Error("Invalid discussion id.");
+  }
+
+  await discussionsClient.delete(`/api/discussions/${discussionId}`, {
+    headers: getAuthHeaders(),
+  });
 }
 
 export async function likeDiscussion(postId: number): Promise<void> {

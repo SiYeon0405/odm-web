@@ -55,7 +55,17 @@ export default function DiscussionListPage() {
       <main className="home-page min-h-screen bg-cream font-sans text-espresso">
         <div className="home-ambient" aria-hidden="true" />
         <HomeNavbar />
-        <section className="relative mx-auto max-w-5xl px-4 pb-20 pt-40 md:pt-48">
+        <div className="relative mx-auto flex max-w-5xl justify-end px-4 pt-32 md:pt-40">
+          <button
+            type="button"
+            onClick={() => navigate(`/clubs/${clubId}/discussions/new`)}
+            disabled={!clubId}
+            className="rounded-full bg-espresso px-5 py-3 text-sm font-bold text-cream disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            글쓰기
+          </button>
+        </div>
+        <section className="relative mx-auto max-w-5xl px-4 pb-20 pt-8">
           <h1 className="text-3xl font-bold">게시글</h1>
 
           {isLoading && <p className="mt-8 text-coffee/64">게시글을 불러오는 중입니다.</p>}
