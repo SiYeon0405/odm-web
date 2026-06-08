@@ -11,6 +11,7 @@ import RecruitmentDetailPage from "./features/recruitments/pages/RecruitmentDeta
 import DiscussionCreatePage from "./features/discussions/pages/DiscussionCreatePage";
 import DiscussionListPage from "./features/discussions/pages/DiscussionListPage";
 import DiscussionDetailPage from "./features/discussions/pages/DiscussionDetailPage";
+import DiscussionEditPage from "./features/discussions/pages/DiscussionEditPage";
 import LoginPage from "./features/auth/pages/LoginPage";
 import SignupCompletePage from "./features/auth/pages/SignupCompletePage";
 import MyClubsPage from "./features/my-clubs/pages/MyClubsPage";
@@ -41,6 +42,7 @@ function App() {
         <Route path="/recruitments/:recruitmentId" element={<RecruitmentDetailPage />} />
         <Route path="/clubs/:clubId/discussions/new" element={<DiscussionCreatePage />} />
         <Route path="/clubs/:clubId/discussions" element={<DiscussionListPage />} />
+        <Route path="/discussions/:discussionId/edit" element={<DiscussionEditPage />} />
         <Route path="/discussions/:discussionId" element={<DiscussionDetailPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<LoginPage />} />

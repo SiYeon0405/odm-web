@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import Footer from "@/components/footer/Footer";
 import HomeNavbar from "@/components/navbar/HomeNavbar";
 import CommentForm from "@/features/comments/components/CommentForm";
@@ -7,6 +7,7 @@ import CommentList from "@/features/comments/components/CommentList";
 import { createComment, getCommentErrorMessage, getCommentsByDiscussionId } from "@/features/comments/api/commentsApi";
 import type { Comment } from "@/features/comments/types";
 import {
+  deleteDiscussion,
   getDiscussionById,
   getDiscussionErrorMessage,
   likeDiscussion,
@@ -16,6 +17,7 @@ import type { Discussion } from "@/features/discussions/types";
 
 export default function DiscussionDetailPage() {
   const { discussionId } = useParams();
+  const navigate = useNavigate();
   const [discussion, setDiscussion] = useState<Discussion | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -25,6 +27,7 @@ export default function DiscussionDetailPage() {
   const [isCommentSubmitting, setIsCommentSubmitting] = useState(false);
   const [liked, setLiked] = useState(false);
   const [isLikeSubmitting, setIsLikeSubmitting] = useState(false);
+  const [isDeleteSubmitting, setIsDeleteSubmitting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -124,6 +127,27 @@ export default function DiscussionDetailPage() {
     }
   };
 
+  const handleDeleteDiscussion = async () => {
+    const id = Number(discussionId);
+    if (!discussionId || Number.isNaN(id) || isDeleteSubmitting) return;
+    if (!window.confirm("게시글을 삭제하시겠습니까?")) return;
+
+    setIsDeleteSubmitting(true);
+    setErrorMessage("");
+    try {
+      await deleteDiscussion(id);
+      if (discussion?.clubId) {
+        navigate(`/clubs/${discussion.clubId}/discussions`);
+      } else {
+        navigate(-1);
+      }
+    } catch (error) {
+      setErrorMessage(getDiscussionErrorMessage(error));
+    } finally {
+      setIsDeleteSubmitting(false);
+    }
+  };
+
   return (
     <>
       <main className="home-page min-h-screen bg-cream font-sans text-espresso">
@@ -144,6 +168,23 @@ export default function DiscussionDetailPage() {
           )}
           {!isLoading && !errorMessage && discussion && (
             <article className="mt-8 rounded-2xl border border-coffee/10 bg-ivory/70 p-6 shadow-warm">
+              <div className="mb-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => navigate(`/discussions/${discussion.discussionId}/edit`)}
+                  className="rounded-full border border-coffee/10 bg-white/70 px-4 py-2 text-sm font-bold text-coffee"
+                >
+                  수정
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteDiscussion}
+                  disabled={isDeleteSubmitting}
+                  className="rounded-full bg-caramel px-4 py-2 text-sm font-bold text-cream disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isDeleteSubmitting ? "삭제 중..." : "삭제"}
+                </button>
+              </div>
               <div className="flex flex-wrap items-center gap-3">
                 <span className="text-xs font-bold text-coffee/58">댓글 {discussion.commentCount ?? 0}</span>
                 <button
