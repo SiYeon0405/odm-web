@@ -25,6 +25,8 @@ type ReviewResponse = {
   content?: string;
   rating?: number | null;
   readPage?: number | null;
+  likeCount?: number;
+  likes?: number;
   status?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -52,6 +54,7 @@ export type Review = {
   content: string;
   rating?: number | null;
   readPage?: number | null;
+  likeCount?: number;
   status?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -107,6 +110,7 @@ function normalizeReview(data: ReviewResponse): Review {
     content: data.content ?? "",
     rating: data.rating,
     readPage: data.readPage,
+    likeCount: data.likeCount ?? data.likes,
     status: data.status,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
@@ -164,6 +168,10 @@ export function getReviewErrorMessage(error: unknown): string {
         return "독후감을 수정하거나 삭제할 권한이 없습니다.";
       case "REVIEW_ALREADY_DELETED":
         return "이미 삭제된 독후감입니다.";
+      case "REVIEW_LIKE_ALREADY_EXISTS":
+        return "이미 좋아요한 독후감입니다.";
+      case "REVIEW_LIKE_NOT_FOUND":
+        return "좋아요한 독후감이 아닙니다.";
       default:
         break;
     }
@@ -215,6 +223,26 @@ export async function deleteReview(reviewId: number): Promise<void> {
   await reviewsClient.delete(`/api/reviews/${reviewId}`, {
     headers: getAuthHeaders(),
   });
+}
+
+export async function likeReview(reviewId: number): Promise<void> {
+  await reviewsClient.post(`/api/reviews/${reviewId}/likes`, undefined, {
+    headers: getAuthHeaders(),
+  });
+}
+
+export async function unlikeReview(reviewId: number): Promise<void> {
+  await reviewsClient.delete(`/api/reviews/${reviewId}/likes`, {
+    headers: getAuthHeaders(),
+  });
+}
+
+export async function getReviewLikeCount(reviewId: number): Promise<number> {
+  const response = await reviewsClient.get<ApiResponse<number>>(`/api/reviews/${reviewId}/likes/count`, {
+    headers: getAuthHeaders(),
+  });
+
+  return response.data.data ?? 0;
 }
 
 export async function getReviewById(reviewId: number): Promise<Review> {

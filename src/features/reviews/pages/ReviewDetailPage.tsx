@@ -7,6 +7,9 @@ import {
   getMyReviews,
   getReviewById,
   getReviewErrorMessage,
+  getReviewLikeCount,
+  likeReview,
+  unlikeReview,
   type Review,
 } from "@/features/reviews/api/reviewsApi";
 
@@ -18,6 +21,9 @@ export default function ReviewDetailPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isOwner, setIsOwner] = useState(false);
   const [isDeleteSubmitting, setIsDeleteSubmitting] = useState(false);
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [isLikeSubmitting, setIsLikeSubmitting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -35,6 +41,15 @@ export default function ReviewDetailPage() {
       .then((data) => {
         if (!active) return;
         setReview(data);
+        setLiked(false);
+        setLikeCount(data.likeCount ?? 0);
+        getReviewLikeCount(id)
+          .then((count) => {
+            if (active) setLikeCount(count);
+          })
+          .catch(() => {
+            // Keep the detail response count if the count endpoint is unavailable.
+          });
         getMyReviews(0, 100)
           .then((myReviews) => {
             if (!active) return;
@@ -49,6 +64,8 @@ export default function ReviewDetailPage() {
         setErrorMessage(getReviewErrorMessage(error));
         setReview(null);
         setIsOwner(false);
+        setLiked(false);
+        setLikeCount(0);
       })
       .finally(() => {
         if (active) setIsLoading(false);
@@ -73,6 +90,50 @@ export default function ReviewDetailPage() {
       setErrorMessage(getReviewErrorMessage(error));
     } finally {
       setIsDeleteSubmitting(false);
+    }
+  };
+
+  const refreshLikeCount = async (id: number) => {
+    try {
+      setLikeCount(await getReviewLikeCount(id));
+    } catch {
+      // Keep the current optimistic count when refresh fails.
+    }
+  };
+
+  const getErrorCode = (error: unknown) =>
+    typeof error === "object" && error !== null && "response" in error
+      ? (error as { response?: { data?: { code?: string } } }).response?.data?.code
+      : undefined;
+
+  const handleToggleLike = async () => {
+    const id = Number(reviewId);
+    if (!reviewId || Number.isNaN(id) || isLikeSubmitting) return;
+
+    setIsLikeSubmitting(true);
+    try {
+      if (liked) {
+        await unlikeReview(id);
+        setLiked(false);
+        setLikeCount((current) => Math.max(0, current - 1));
+      } else {
+        await likeReview(id);
+        setLiked(true);
+        setLikeCount((current) => current + 1);
+      }
+    } catch (error) {
+      const code = getErrorCode(error);
+      if (code === "REVIEW_LIKE_ALREADY_EXISTS") {
+        setLiked(true);
+        await refreshLikeCount(id);
+      } else if (code === "REVIEW_LIKE_NOT_FOUND") {
+        setLiked(false);
+        await refreshLikeCount(id);
+      } else {
+        window.alert(getReviewErrorMessage(error));
+      }
+    } finally {
+      setIsLikeSubmitting(false);
     }
   };
 
@@ -116,6 +177,16 @@ export default function ReviewDetailPage() {
                 {review.writerNickname && <span>{review.writerNickname}</span>}
                 {review.rating != null && <span>평점 {review.rating}</span>}
                 {review.readPage != null && <span>읽은 페이지 {review.readPage}</span>}
+                <button
+                  type="button"
+                  onClick={handleToggleLike}
+                  disabled={isLikeSubmitting}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-coffee/58 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-pressed={liked}
+                >
+                  <span aria-hidden="true">{liked ? "♥" : "♡"}</span>
+                  <span>좋아요 {likeCount}</span>
+                </button>
                 {review.createdAt && <span className="text-coffee/48">{review.createdAt}</span>}
               </div>
               <h1 className="mt-5 text-3xl font-bold">{review.title}</h1>
