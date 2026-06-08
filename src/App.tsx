@@ -22,6 +22,9 @@ import NotificationListPage from "./features/notifications/pages/NotificationLis
 import MyRatingListPage from "./features/ratings/pages/MyRatingListPage";
 import RatingCreatePage from "./features/ratings/pages/RatingCreatePage";
 import UserRatingListPage from "./features/ratings/pages/UserRatingListPage";
+import MyReportListPage from "./features/reports/pages/MyReportListPage";
+import ReportCreatePage from "./features/reports/pages/ReportCreatePage";
+import UserReportListPage from "./features/reports/pages/UserReportListPage";
 import LoginPage from "./features/auth/pages/LoginPage";
 import SignupCompletePage from "./features/auth/pages/SignupCompletePage";
 import MyClubsPage from "./features/my-clubs/pages/MyClubsPage";
@@ -64,6 +67,9 @@ function App() {
         <Route path="/ratings/new" element={<RatingCreatePage />} />
         <Route path="/ratings/me" element={<MyRatingListPage />} />
         <Route path="/ratings/users/:userId" element={<UserRatingListPage />} />
+        <Route path="/reports/new" element={<ReportCreatePage />} />
+        <Route path="/reports/me" element={<MyReportListPage />} />
+        <Route path="/reports/users/:userId" element={<UserReportListPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<LoginPage />} />
         <Route path="/signup-complete" element={<SignupCompletePage />} />
