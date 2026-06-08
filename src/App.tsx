@@ -16,7 +16,9 @@ import ClubReviewListPage from "./features/reviews/pages/ClubReviewListPage";
 import MyReviewListPage from "./features/reviews/pages/MyReviewListPage";
 import ReviewCreatePage from "./features/reviews/pages/ReviewCreatePage";
 import ReviewDetailPage from "./features/reviews/pages/ReviewDetailPage";
+import ReviewEditPage from "./features/reviews/pages/ReviewEditPage";
 import ReviewListPage from "./features/reviews/pages/ReviewListPage";
+import NotificationListPage from "./features/notifications/pages/NotificationListPage";
 import LoginPage from "./features/auth/pages/LoginPage";
 import SignupCompletePage from "./features/auth/pages/SignupCompletePage";
 import MyClubsPage from "./features/my-clubs/pages/MyClubsPage";
@@ -52,8 +54,10 @@ function App() {
         <Route path="/clubs/:clubId/reviews" element={<ClubReviewListPage />} />
         <Route path="/clubs/:clubId/reviews/new" element={<ReviewCreatePage />} />
         <Route path="/reviews" element={<ReviewListPage />} />
+        <Route path="/reviews/:reviewId/edit" element={<ReviewEditPage />} />
         <Route path="/reviews/:reviewId" element={<ReviewDetailPage />} />
         <Route path="/users/me/reviews" element={<MyReviewListPage />} />
+        <Route path="/notifications" element={<NotificationListPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<LoginPage />} />
         <Route path="/signup-complete" element={<SignupCompletePage />} />
