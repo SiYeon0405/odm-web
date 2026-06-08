@@ -237,7 +237,7 @@ export default function MyPage() {
           </section>
 
           <section className="mt-10 rounded-[2rem] border border-coffee/8 bg-ivory/66 p-6 shadow-warm lg:p-8">
-          <SectionTitle>내 독후감</SectionTitle>
+          <SectionTitle href="/users/me/reviews">내 독후감</SectionTitle>
             <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {reviewItems.slice(0, 4).map((book, index) => (
                 <article key={getItemId(book, index)} className="rounded-[1.4rem] border border-coffee/8 bg-white/52 p-4">

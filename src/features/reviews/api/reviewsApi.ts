@@ -32,6 +32,8 @@ type ReviewResponse = {
 type ReviewPageResponse = {
   content?: ReviewResponse[];
   reviews?: ReviewResponse[];
+  data?: ReviewPageResponse;
+  result?: ReviewPageResponse;
   totalPages?: number;
   totalElements?: number;
   number?: number;
@@ -125,13 +127,14 @@ function normalizeReviewPage(data: ReviewPageResponse | ReviewResponse[] | undef
     };
   }
 
-  const content = data.content ?? data.reviews ?? [];
+  const pageData = data.content || data.reviews ? data : data.data ?? data.result ?? data;
+  const content = pageData.content ?? pageData.reviews ?? [];
   return {
     content: content.map(normalizeReview),
-    totalPages: data.totalPages ?? 0,
-    totalElements: data.totalElements ?? content.length,
-    number: data.number ?? data.page ?? page,
-    size: data.size ?? size,
+    totalPages: pageData.totalPages ?? 0,
+    totalElements: pageData.totalElements ?? content.length,
+    number: pageData.number ?? pageData.page ?? page,
+    size: pageData.size ?? size,
   };
 }
 
@@ -195,6 +198,15 @@ export async function getReviewById(reviewId: number): Promise<Review> {
   const payload = unwrapApiResponse(response.data);
 
   return normalizeReview(payload);
+}
+
+export async function getReviews(page = 0, size = 20): Promise<ReviewPage> {
+  const response = await reviewsClient.get<ApiResponse<ReviewPageResponse> | ReviewPageResponse>("/api/reviews", {
+    params: { page, size },
+  });
+  const payload = unwrapApiResponse(response.data);
+
+  return normalizeReviewPage(payload, page, size);
 }
 
 export async function getClubReviews(clubId: number, page = 0, size = 20): Promise<ReviewPage> {
