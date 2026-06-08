@@ -1,4 +1,5 @@
 import axios from "axios";
+import type { ReviewUpdateRequest } from "@/features/reviews/types";
 
 const ACCESS_TOKEN_KEY = "odm_accessToken";
 const DEFAULT_BASE_URL = "http://localhost:8080";
@@ -159,6 +160,10 @@ export function getReviewErrorMessage(error: unknown): string {
         return "독서모임을 찾을 수 없습니다.";
       case "REVIEW_NOT_FOUND":
         return "발행된 독후감을 찾을 수 없습니다.";
+      case "REVIEW_ACCESS_DENIED":
+        return "독후감을 수정하거나 삭제할 권한이 없습니다.";
+      case "REVIEW_ALREADY_DELETED":
+        return "이미 삭제된 독후감입니다.";
       default:
         break;
     }
@@ -191,6 +196,25 @@ export async function publishReview(reviewId: number): Promise<Review> {
   const payload = unwrapApiResponse(response.data);
 
   return normalizeReview(payload);
+}
+
+export async function updateReview(reviewId: number, request: ReviewUpdateRequest): Promise<Review> {
+  const response = await reviewsClient.put<ApiResponse<ReviewResponse> | ReviewResponse>(
+    `/api/reviews/${reviewId}`,
+    request,
+    {
+      headers: getAuthHeaders(),
+    },
+  );
+  const payload = unwrapApiResponse(response.data);
+
+  return normalizeReview(payload);
+}
+
+export async function deleteReview(reviewId: number): Promise<void> {
+  await reviewsClient.delete(`/api/reviews/${reviewId}`, {
+    headers: getAuthHeaders(),
+  });
 }
 
 export async function getReviewById(reviewId: number): Promise<Review> {
