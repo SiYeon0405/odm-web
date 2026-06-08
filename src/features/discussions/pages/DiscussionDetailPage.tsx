@@ -88,6 +88,12 @@ export default function DiscussionDetailPage() {
     try {
       await createComment(id, content);
       await loadComments(id);
+      try {
+        const updatedDiscussion = await getDiscussionById(id);
+        setDiscussion(updatedDiscussion);
+      } catch {
+        // Keep the current discussion header if refreshing the count fails.
+      }
     } catch (error) {
       setCommentsErrorMessage(getCommentErrorMessage(error));
       throw error;
