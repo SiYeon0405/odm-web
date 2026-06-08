@@ -6,7 +6,12 @@ import CommentForm from "@/features/comments/components/CommentForm";
 import CommentList from "@/features/comments/components/CommentList";
 import { createComment, getCommentErrorMessage, getCommentsByDiscussionId } from "@/features/comments/api/commentsApi";
 import type { Comment } from "@/features/comments/types";
-import { getDiscussionById, getDiscussionErrorMessage } from "@/features/discussions/api/discussionsApi";
+import {
+  getDiscussionById,
+  getDiscussionErrorMessage,
+  likeDiscussion,
+  unlikeDiscussion,
+} from "@/features/discussions/api/discussionsApi";
 import type { Discussion } from "@/features/discussions/types";
 
 export default function DiscussionDetailPage() {
@@ -18,6 +23,8 @@ export default function DiscussionDetailPage() {
   const [isCommentsLoading, setIsCommentsLoading] = useState(false);
   const [commentsErrorMessage, setCommentsErrorMessage] = useState("");
   const [isCommentSubmitting, setIsCommentSubmitting] = useState(false);
+  const [liked, setLiked] = useState(false);
+  const [isLikeSubmitting, setIsLikeSubmitting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -35,6 +42,7 @@ export default function DiscussionDetailPage() {
       .then((data) => {
         if (!active) return;
         setDiscussion(data);
+        setLiked(false);
       })
       .catch((error) => {
         if (!active) return;
@@ -88,6 +96,28 @@ export default function DiscussionDetailPage() {
     }
   };
 
+  const handleToggleLike = async () => {
+    const id = Number(discussionId);
+    if (!discussionId || Number.isNaN(id) || isLikeSubmitting) return;
+
+    setIsLikeSubmitting(true);
+    try {
+      if (liked) {
+        await unlikeDiscussion(id);
+      } else {
+        await likeDiscussion(id);
+      }
+
+      const updatedDiscussion = await getDiscussionById(id);
+      setDiscussion(updatedDiscussion);
+      setLiked((currentLiked) => !currentLiked);
+    } catch {
+      // Keep the current server-rendered like count on failed like requests.
+    } finally {
+      setIsLikeSubmitting(false);
+    }
+  };
+
   return (
     <>
       <main className="home-page min-h-screen bg-cream font-sans text-espresso">
@@ -110,7 +140,16 @@ export default function DiscussionDetailPage() {
             <article className="mt-8 rounded-2xl border border-coffee/10 bg-ivory/70 p-6 shadow-warm">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="text-xs font-bold text-coffee/58">댓글 {discussion.commentCount ?? 0}</span>
-                <span className="text-xs font-bold text-coffee/58">좋아요 {discussion.likeCount ?? 0}</span>
+                <button
+                  type="button"
+                  onClick={handleToggleLike}
+                  disabled={isLikeSubmitting}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-coffee/58 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-pressed={liked}
+                >
+                  <span aria-hidden="true">{liked ? "♥" : "♡"}</span>
+                  <span>좋아요 {discussion.likeCount ?? 0}</span>
+                </button>
                 {discussion.createdAt && (
                   <span className="text-xs font-bold text-coffee/48">{discussion.createdAt}</span>
                 )}

@@ -162,3 +162,23 @@ export async function getDiscussionById(discussionId: number): Promise<Discussio
 
   return normalizeDiscussion(payload);
 }
+
+export async function likeDiscussion(postId: number): Promise<void> {
+  if (!postId || Number.isNaN(postId)) {
+    throw new Error("Invalid discussion id.");
+  }
+
+  await discussionsClient.post(`/api/discussions/${postId}/likes`, undefined, {
+    headers: getAuthHeaders(),
+  });
+}
+
+export async function unlikeDiscussion(postId: number): Promise<void> {
+  if (!postId || Number.isNaN(postId)) {
+    throw new Error("Invalid discussion id.");
+  }
+
+  await discussionsClient.delete(`/api/discussions/${postId}/likes`, {
+    headers: getAuthHeaders(),
+  });
+}
