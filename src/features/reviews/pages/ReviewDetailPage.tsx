@@ -3,12 +3,14 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import Footer from "@/components/footer/Footer";
 import HomeNavbar from "@/components/navbar/HomeNavbar";
 import {
+  bookmarkReview,
   deleteReview,
   getMyReviews,
   getReviewById,
   getReviewErrorMessage,
   getReviewLikeCount,
   likeReview,
+  unbookmarkReview,
   unlikeReview,
   type Review,
 } from "@/features/reviews/api/reviewsApi";
@@ -24,6 +26,8 @@ export default function ReviewDetailPage() {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [isLikeSubmitting, setIsLikeSubmitting] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
+  const [isBookmarkSubmitting, setIsBookmarkSubmitting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -42,6 +46,7 @@ export default function ReviewDetailPage() {
         if (!active) return;
         setReview(data);
         setLiked(false);
+        setBookmarked(false);
         setLikeCount(data.likeCount ?? 0);
         getReviewLikeCount(id)
           .then((count) => {
@@ -65,6 +70,7 @@ export default function ReviewDetailPage() {
         setReview(null);
         setIsOwner(false);
         setLiked(false);
+        setBookmarked(false);
         setLikeCount(0);
       })
       .finally(() => {
@@ -137,6 +143,33 @@ export default function ReviewDetailPage() {
     }
   };
 
+  const handleToggleBookmark = async () => {
+    const id = Number(reviewId);
+    if (!reviewId || Number.isNaN(id) || isBookmarkSubmitting) return;
+
+    setIsBookmarkSubmitting(true);
+    try {
+      if (bookmarked) {
+        await unbookmarkReview(id);
+        setBookmarked(false);
+      } else {
+        await bookmarkReview(id);
+        setBookmarked(true);
+      }
+    } catch (error) {
+      const code = getErrorCode(error);
+      if (code === "BOOKMARK_ALREADY_EXISTS") {
+        setBookmarked(true);
+      } else if (code === "BOOKMARK_NOT_FOUND") {
+        setBookmarked(false);
+      } else {
+        window.alert(getReviewErrorMessage(error));
+      }
+    } finally {
+      setIsBookmarkSubmitting(false);
+    }
+  };
+
   return (
     <>
       <main className="home-page min-h-screen bg-cream font-sans text-espresso">
@@ -186,6 +219,16 @@ export default function ReviewDetailPage() {
                 >
                   <span aria-hidden="true">{liked ? "♥" : "♡"}</span>
                   <span>좋아요 {likeCount}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleToggleBookmark}
+                  disabled={isBookmarkSubmitting}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-coffee/58 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-pressed={bookmarked}
+                >
+                  <span aria-hidden="true">{bookmarked ? "★" : "☆"}</span>
+                  <span>{bookmarked ? "북마크됨" : "북마크"}</span>
                 </button>
                 {review.createdAt && <span className="text-coffee/48">{review.createdAt}</span>}
               </div>

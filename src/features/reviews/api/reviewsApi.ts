@@ -172,6 +172,10 @@ export function getReviewErrorMessage(error: unknown): string {
         return "이미 좋아요한 독후감입니다.";
       case "REVIEW_LIKE_NOT_FOUND":
         return "좋아요한 독후감이 아닙니다.";
+      case "BOOKMARK_ALREADY_EXISTS":
+        return "이미 북마크한 독후감입니다.";
+      case "BOOKMARK_NOT_FOUND":
+        return "북마크한 독후감이 아닙니다.";
       default:
         break;
     }
@@ -243,6 +247,18 @@ export async function getReviewLikeCount(reviewId: number): Promise<number> {
   });
 
   return response.data.data ?? 0;
+}
+
+export async function bookmarkReview(reviewId: number): Promise<void> {
+  await reviewsClient.post(`/api/bookmarks/reviews/${reviewId}`, undefined, {
+    headers: getAuthHeaders(),
+  });
+}
+
+export async function unbookmarkReview(reviewId: number): Promise<void> {
+  await reviewsClient.delete(`/api/bookmarks/reviews/${reviewId}`, {
+    headers: getAuthHeaders(),
+  });
 }
 
 export async function getReviewById(reviewId: number): Promise<Review> {
