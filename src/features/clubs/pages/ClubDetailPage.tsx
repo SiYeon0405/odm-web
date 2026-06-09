@@ -6,9 +6,8 @@ import HomeNavbar from "@/components/navbar/HomeNavbar";
 import Button from "@/components/ui/Button";
 import CancelParticipationModal from "@/features/clubs/components/CancelParticipationModal";
 import JoinClubButton from "@/features/clubs/components/JoinClubButton";
-import { fetchClubById, joinClub, leaveClub } from "@/features/clubs/api/clubsApi";
-import type { ClubDetail } from "@/features/clubs/api/clubsApi";
-import axios from "axios";
+import { fetchClubById, getClubErrorMessage, getClubMembers, joinClub, leaveClub } from "@/features/clubs/api/clubsApi";
+import type { ClubDetail, ClubMember } from "@/features/clubs/api/clubsApi";
 
 export default function ClubDetailPage() {
   const { clubId } = useParams();
@@ -19,6 +18,7 @@ export default function ClubDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isJoined, setIsJoined] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
+  const [members, setMembers] = useState<ClubMember[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -29,11 +29,12 @@ export default function ClubDetailPage() {
       return;
     }
 
-    fetchClubById(id)
-      .then((data) => {
+    Promise.all([fetchClubById(id), getClubMembers(id).catch(() => ({ members: [] }))])
+      .then(([data, membersPage]) => {
         if (active) {
           setClub(data);
           setIsJoined(data?.isJoined ?? false);
+          setMembers(membersPage.members);
           setIsLoading(false);
         }
       })
@@ -56,31 +57,12 @@ export default function ClubDetailPage() {
     return () => window.clearTimeout(timeoutId);
   }, [toastVisible]);
 
-  const getClubActionErrorMessage = (error: unknown) => {
-    if (axios.isAxiosError(error)) {
-      switch (error.response?.status) {
-        case 401:
-          return "로그인이 필요합니다.";
-        case 403:
-          return "참여 권한이 없습니다.";
-        case 404:
-          return "모임을 찾을 수 없습니다.";
-        case 409:
-          return "이미 참여했거나 현재 참여/탈퇴할 수 없는 모임입니다.";
-        case 400:
-          return "정원이 가득 찼거나 요청이 올바르지 않습니다.";
-        default:
-          return "요청 처리 중 오류가 발생했습니다.";
-      }
-    }
-
-    return "요청 처리 중 오류가 발생했습니다.";
-  };
-
   const refreshClub = async (id: number, joinedFallback: boolean) => {
     const updatedClub = await fetchClubById(id);
     setClub(updatedClub);
     setIsJoined(updatedClub?.isJoined ?? joinedFallback);
+    const membersPage = await getClubMembers(id).catch(() => ({ members: [] }));
+    setMembers(membersPage.members);
   };
 
   const handleJoinClub = async () => {
@@ -92,7 +74,7 @@ export default function ClubDetailPage() {
       setIsJoined(true);
       await refreshClub(club.id, true);
     } catch (error) {
-      window.alert(getClubActionErrorMessage(error));
+      window.alert(getClubErrorMessage(error));
     } finally {
       setIsSubmitting(false);
     }
@@ -110,7 +92,7 @@ export default function ClubDetailPage() {
       setCancelModalOpen(false);
       setToastVisible(true);
     } catch (error) {
-      window.alert(getClubActionErrorMessage(error));
+      window.alert(getClubErrorMessage(error));
     } finally {
       setIsCancelling(false);
       setIsSubmitting(false);
@@ -151,6 +133,7 @@ export default function ClubDetailPage() {
                   <p className="mt-2 text-sm font-bold text-caramel">
                     현재 {club.members} / {club.maxMembers}명 참여 중
                   </p>
+                  {members.length > 0 && <p className="mt-2 text-sm text-coffee/58">참여자 {members.length}명</p>}
                 </div>
               </div>
               <div className="mt-9 border-t border-coffee/10 pt-6">

@@ -18,3 +18,8 @@ export type PageResponse<T> = {
   number: number;
   size: number;
 };
+
+export type RecruitmentUpdateRequest = {
+  title: string;
+  description: string;
+};

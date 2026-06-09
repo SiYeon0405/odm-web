@@ -42,6 +42,7 @@ type ClubDetailResponse = {
   imageUrl?: string;
   coverImage?: string;
   bookTitle?: string;
+  bookId?: number;
   bookAuthor?: string;
   author?: string;
   startDate?: string;
@@ -72,6 +73,14 @@ type ClubPageResponse = {
   totalPages?: number;
 };
 
+type ClubMembersPageResponse = {
+  content?: ClubMemberResponse[];
+  totalElements?: number;
+  totalPages?: number;
+  number?: number;
+  size?: number;
+};
+
 export type ClubDetail = Club & {
   leaderName?: string;
   recruitmentStatus?: string;
@@ -80,12 +89,42 @@ export type ClubDetail = Club & {
   bookCover?: string;
   startDate?: string;
   endDate?: string;
+  bookId?: number;
 };
 
 export type ClubPage = {
   clubs: Club[];
   totalElements: number;
   totalPages: number;
+};
+
+export type ClubMember = {
+  id: number;
+  clubId?: number;
+  userId?: number;
+  role?: string;
+  joinedAt?: string;
+};
+
+export type ClubMemberPage = {
+  members: ClubMember[];
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  size: number;
+};
+
+export type ClubCreatePayload = {
+  title: string;
+  description: string;
+  maxMembers: number;
+  startDate: string;
+  endDate: string;
+  bookId: number;
+};
+
+export type ClubUpdatePayload = ClubCreatePayload & {
+  status: string;
 };
 
 const clubsClient = axios.create({
@@ -140,7 +179,26 @@ export async function fetchClubs(page = 0, size = 20): Promise<ClubPage> {
   };
 }
 
+export const getClubs = fetchClubs;
+
+export async function getMyClubs(page = 0, size = 20): Promise<ClubPage> {
+  const response = await clubsClient.get<ApiResponse<ClubPageResponse>>("/api/clubs/my", {
+    headers: getAuthHeaders(),
+    params: { page, size },
+  });
+  const payload = response.data.data;
+  const content = payload?.content ?? [];
+
+  return {
+    clubs: content.map(normalizeClubDetail),
+    totalElements: payload?.totalElements ?? content.length,
+    totalPages: payload?.totalPages ?? 0,
+  };
+}
+
 export async function fetchClubById(clubId: number): Promise<ClubDetail | undefined> {
+  validateClubId(clubId);
+
   const response = await clubsClient.get<ApiResponse<ClubDetailResponse> | ClubDetailResponse>(`/api/clubs/${clubId}`, {
     headers: getAuthHeaders(),
   });
@@ -149,7 +207,68 @@ export async function fetchClubById(clubId: number): Promise<ClubDetail | undefi
   return normalizeClubDetail(payload);
 }
 
+export const getClubDetail = fetchClubById;
+
+export async function getClubMembers(clubId: number, page = 0, size = 20): Promise<ClubMemberPage> {
+  validateClubId(clubId);
+
+  const response = await clubsClient.get<ApiResponse<ClubMembersPageResponse> | ClubMembersPageResponse>(
+    `/api/clubs/${clubId}/members`,
+    {
+      headers: getAuthHeaders(),
+      params: { page, size },
+    },
+  );
+  const payload = "data" in response.data && response.data.data ? response.data.data : response.data;
+  const content = payload.content ?? [];
+
+  return {
+    members: content.map(normalizeClubMember),
+    totalElements: payload.totalElements ?? content.length,
+    totalPages: payload.totalPages ?? 0,
+    page: payload.number ?? page,
+    size: payload.size ?? size,
+  };
+}
+
+export async function createClub(payload: ClubCreatePayload): Promise<ClubDetail> {
+  validateClubPayload(payload);
+
+  const response = await clubsClient.post<ApiResponse<ClubDetailResponse> | ClubDetailResponse>("/api/clubs", payload, {
+    headers: getAuthHeaders(),
+  });
+  const data = "data" in response.data && response.data.data ? response.data.data : response.data;
+
+  return normalizeClubDetail(data);
+}
+
+export async function updateClub(clubId: number, payload: ClubUpdatePayload): Promise<ClubDetail> {
+  validateClubId(clubId);
+  validateClubPayload(payload);
+
+  const response = await clubsClient.put<ApiResponse<ClubDetailResponse> | ClubDetailResponse>(
+    `/api/clubs/${clubId}`,
+    payload,
+    {
+      headers: getAuthHeaders(),
+    },
+  );
+  const data = "data" in response.data && response.data.data ? response.data.data : response.data;
+
+  return normalizeClubDetail(data);
+}
+
+export async function closeClub(clubId: number): Promise<void> {
+  validateClubId(clubId);
+
+  await clubsClient.delete(`/api/clubs/${clubId}`, {
+    headers: getAuthHeaders(),
+  });
+}
+
 export async function joinClub(clubId: number): Promise<ClubMemberResponse | undefined> {
+  validateClubId(clubId);
+
   const response = await clubsClient.post<ApiResponse<ClubMemberResponse>>(`/api/clubs/${clubId}/join`, undefined, {
     headers: getAuthHeaders(),
   });
@@ -158,9 +277,85 @@ export async function joinClub(clubId: number): Promise<ClubMemberResponse | und
 }
 
 export async function leaveClub(clubId: number): Promise<void> {
+  validateClubId(clubId);
+
   await clubsClient.delete(`/api/clubs/${clubId}/leave`, {
     headers: getAuthHeaders(),
   });
+}
+
+export async function kickClubMember(clubId: number, userId: number): Promise<void> {
+  validateClubId(clubId);
+  validateUserId(userId);
+
+  await clubsClient.delete(`/api/clubs/${clubId}/members/${userId}`, {
+    headers: getAuthHeaders(),
+  });
+}
+
+export function getClubErrorMessage(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    const code = error.response?.data?.code;
+    const message = error.response?.data?.message;
+
+    switch (code) {
+      case "CLUB_NOT_FOUND":
+        return "독서모임을 찾을 수 없습니다.";
+      case "BOOK_NOT_FOUND":
+        return "도서를 찾을 수 없습니다.";
+      case "CLUB_ALREADY_JOINED":
+        return "이미 참여한 독서모임입니다.";
+      case "CLUB_ALREADY_CLOSED":
+        return "종료된 독서모임입니다.";
+      case "CLUB_FULL":
+        return "모집 정원이 가득 찼습니다.";
+      case "USER_BLACKLISTED":
+        return "블랙리스트 사용자는 참여할 수 없습니다.";
+      case "HOST_CANNOT_LEAVE":
+        return "모임장은 탈퇴할 수 없습니다.";
+      case "CLUB_MEMBER_NOT_FOUND":
+        return "참여 정보를 찾을 수 없습니다.";
+      case "FORBIDDEN":
+        return "권한이 없습니다.";
+      case "INVALID_INPUT":
+        return message || "입력값을 확인해주세요.";
+      default:
+        return message || "요청 처리 중 오류가 발생했습니다.";
+    }
+  }
+
+  return error instanceof Error ? error.message : "요청 처리 중 오류가 발생했습니다.";
+}
+
+function validateClubId(clubId: number): void {
+  if (!clubId || Number.isNaN(clubId) || clubId <= 0) {
+    throw new Error("유효한 독서모임 ID가 필요합니다.");
+  }
+}
+
+function validateUserId(userId: number): void {
+  if (!userId || Number.isNaN(userId) || userId <= 0) {
+    throw new Error("유효한 사용자 ID가 필요합니다.");
+  }
+}
+
+function validateClubPayload(payload: ClubCreatePayload): void {
+  if (!payload.title.trim()) throw new Error("독서모임 제목을 입력해주세요.");
+  if (!payload.description.trim()) throw new Error("독서모임 설명을 입력해주세요.");
+  if (payload.maxMembers < 3 || payload.maxMembers > 8) throw new Error("모집 정원은 3명부터 8명까지 가능합니다.");
+  if (!payload.startDate || !payload.endDate) throw new Error("시작일과 종료일을 입력해주세요.");
+  if (!payload.bookId) throw new Error("도서 ID가 필요합니다.");
+  if (payload.startDate > payload.endDate) throw new Error("시작일은 종료일보다 늦을 수 없습니다.");
+}
+
+function normalizeClubMember(data: ClubMemberResponse): ClubMember {
+  return {
+    id: data.id ?? data.userId ?? 0,
+    clubId: data.clubId,
+    userId: data.userId,
+    role: data.role,
+    joinedAt: data.joinedAt,
+  };
 }
 
 function normalizeClubDetail(data: ClubDetailResponse): ClubDetail {
@@ -195,5 +390,6 @@ function normalizeClubDetail(data: ClubDetailResponse): ClubDetail {
     bookCover,
     startDate,
     endDate,
+    bookId: data.bookId,
   };
 }

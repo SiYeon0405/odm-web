@@ -1,5 +1,10 @@
 import axios from "axios";
-import type { PageResponse, Recruitment, RecruitmentStatus } from "@/features/recruitments/types";
+import type {
+  PageResponse,
+  Recruitment,
+  RecruitmentStatus,
+  RecruitmentUpdateRequest,
+} from "@/features/recruitments/types";
 
 const ACCESS_TOKEN_KEY = "odm_accessToken";
 const DEFAULT_BASE_URL = "http://localhost:8080";
@@ -106,6 +111,24 @@ function normalizeRecruitmentPage(
 
 export function getRecruitmentErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
+    const code = error.response?.data?.code;
+    const message = error.response?.data?.message;
+
+    switch (code) {
+      case "RECRUITMENT_POST_NOT_FOUND":
+        return "모집글을 찾을 수 없습니다.";
+      case "RECRUITMENT_ALREADY_CLOSED":
+        return "이미 종료된 모집글입니다.";
+      case "RECRUITMENT_MODIFICATION_NOT_ALLOWED":
+        return "수정할 수 없는 모집글입니다.";
+      case "RECRUITMENT_ALREADY_COMPLETED":
+        return "이미 완료된 모집글입니다.";
+      case "FORBIDDEN":
+        return "권한이 없습니다.";
+      default:
+        break;
+    }
+
     switch (error.response?.status) {
       case 401:
         return "로그인이 필요합니다.";
@@ -114,20 +137,23 @@ export function getRecruitmentErrorMessage(error: unknown): string {
       case 404:
         return "모집글을 찾을 수 없습니다.";
       default:
-        return "모집글 정보를 불러오지 못했습니다.";
+        return message || "모집글 정보를 불러오지 못했습니다.";
     }
   }
 
   return error instanceof Error ? error.message : "모집글 정보를 불러오지 못했습니다.";
 }
 
-export async function getRecruitments(params: GetRecruitmentsParams = {}): Promise<PageResponse<Recruitment>> {
+export async function getRecruitments(
+  paramsOrPage: GetRecruitmentsParams | number = {},
+  sizeArg = 20,
+): Promise<PageResponse<Recruitment>> {
+  const params = typeof paramsOrPage === "number" ? { page: paramsOrPage, size: sizeArg } : paramsOrPage;
   const page = params.page ?? 0;
   const size = params.size ?? 20;
   const response = await recruitmentsClient.get<ApiResponse<RecruitmentPageResponse> | RecruitmentPageResponse>(
     "/api/recruitments",
     {
-      headers: getAuthHeaders(),
       params,
     },
   );
@@ -137,17 +163,53 @@ export async function getRecruitments(params: GetRecruitmentsParams = {}): Promi
 }
 
 export async function getRecruitmentById(recruitmentId: number): Promise<Recruitment> {
-  if (!recruitmentId || Number.isNaN(recruitmentId)) {
-    throw new Error("잘못된 모집글입니다.");
-  }
+  validateRecruitmentId(recruitmentId);
 
   const response = await recruitmentsClient.get<ApiResponse<RecruitmentResponse> | RecruitmentResponse>(
     `/api/recruitments/${recruitmentId}`,
-    {
-      headers: getAuthHeaders(),
-    },
   );
   const payload = unwrapApiResponse(response.data);
 
   return normalizeRecruitment(payload);
+}
+
+export const getRecruitmentDetail = getRecruitmentById;
+
+export async function updateRecruitment(
+  recruitmentId: number,
+  payload: RecruitmentUpdateRequest,
+): Promise<Recruitment> {
+  validateRecruitmentId(recruitmentId);
+  validateRecruitmentPayload(payload);
+
+  const response = await recruitmentsClient.put<ApiResponse<RecruitmentResponse> | RecruitmentResponse>(
+    `/api/recruitments/${recruitmentId}`,
+    payload,
+    {
+      headers: getAuthHeaders(),
+    },
+  );
+  const data = unwrapApiResponse(response.data);
+
+  return normalizeRecruitment(data);
+}
+
+export async function closeRecruitment(recruitmentId: number): Promise<void> {
+  validateRecruitmentId(recruitmentId);
+
+  await recruitmentsClient.patch(`/api/recruitments/${recruitmentId}/close`, undefined, {
+    headers: getAuthHeaders(),
+  });
+}
+
+function validateRecruitmentId(recruitmentId: number): void {
+  if (!recruitmentId || Number.isNaN(recruitmentId) || recruitmentId <= 0) {
+    throw new Error("유효한 모집글 ID가 필요합니다.");
+  }
+}
+
+function validateRecruitmentPayload(payload: RecruitmentUpdateRequest): void {
+  if (!payload.title.trim()) throw new Error("모집글 제목을 입력해주세요.");
+  if (payload.title.length > 320) throw new Error("모집글 제목은 320자 이하로 입력해주세요.");
+  if (!payload.description.trim()) throw new Error("모집글 내용을 입력해주세요.");
 }
