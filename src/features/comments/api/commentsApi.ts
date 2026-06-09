@@ -26,6 +26,10 @@ type GetCommentsParams = {
   size?: number;
 };
 
+type UpdateCommentRequest = {
+  content: string;
+};
+
 const commentsClient = axios.create({
   baseURL: BASE_URL,
 });
@@ -159,6 +163,27 @@ export async function createComment(discussionId: number, content: string): Prom
       postId: discussionId,
       content: trimmedContent,
     },
+    {
+      headers: getAuthHeaders(),
+    },
+  );
+  const payload = unwrapApiResponse(response.data);
+
+  return normalizeComment(payload);
+}
+
+export async function updateComment(commentId: number, request: UpdateCommentRequest): Promise<Comment> {
+  const trimmedContent = request.content.trim();
+  if (!commentId || Number.isNaN(commentId)) {
+    throw new Error("Invalid comment id.");
+  }
+  if (!trimmedContent) {
+    throw new Error("?볤? ?댁슜???뺤씤?댁＜?몄슂.");
+  }
+
+  const response = await commentsClient.patch<ApiResponse<CommentResponse> | CommentResponse>(
+    `/api/comments/${commentId}`,
+    { content: trimmedContent },
     {
       headers: getAuthHeaders(),
     },
