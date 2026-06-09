@@ -38,8 +38,8 @@ export default function HeroSection() {
             className="mt-9 flex flex-col justify-center gap-4 sm:flex-row lg:justify-start"
           >
             <Button href="/clubs">독서모임 둘러보기</Button>
-            <Button href="#community" variant="secondary">
-              베스트 셀러 둘러보기
+            <Button href="/search" variant="secondary">
+              책 검색하기
             </Button>
           </motion.div>
         </div>

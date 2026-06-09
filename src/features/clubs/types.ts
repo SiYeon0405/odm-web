@@ -16,4 +16,5 @@ export type Club = {
   meetingLabel: string;
   createdAt: string;
   hasStarted?: boolean;
+  isJoined?: boolean;
 };

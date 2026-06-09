@@ -5,29 +5,45 @@ import Footer from "@/components/footer/Footer";
 import HomeNavbar from "@/components/navbar/HomeNavbar";
 import Button from "@/components/ui/Button";
 import CancelParticipationModal from "@/features/clubs/components/CancelParticipationModal";
-import { fetchClubById } from "@/features/clubs/api/clubsApi";
-import type { Club } from "@/features/clubs/types";
-import { cancelClubParticipation } from "@/features/my-clubs/api/myClubsApi";
+import JoinClubButton from "@/features/clubs/components/JoinClubButton";
+import { fetchClubById, getClubErrorMessage, getClubMembers, joinClub, leaveClub } from "@/features/clubs/api/clubsApi";
+import type { ClubDetail, ClubMember } from "@/features/clubs/api/clubsApi";
 
 export default function ClubDetailPage() {
   const { clubId } = useParams();
-  const [club, setClub] = useState<Club | undefined>();
+  const [club, setClub] = useState<ClubDetail | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [hasCancelled, setHasCancelled] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isJoined, setIsJoined] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
+  const [members, setMembers] = useState<ClubMember[]>([]);
 
   useEffect(() => {
     let active = true;
     const id = Number(clubId);
+    if (!clubId || Number.isNaN(id)) {
+      setClub(undefined);
+      setIsLoading(false);
+      return;
+    }
 
-    fetchClubById(id).then((data) => {
-      if (active) {
-        setClub(data);
-        setIsLoading(false);
-      }
-    });
+    Promise.all([fetchClubById(id), getClubMembers(id).catch(() => ({ members: [] }))])
+      .then(([data, membersPage]) => {
+        if (active) {
+          setClub(data);
+          setIsJoined(data?.isJoined ?? false);
+          setMembers(membersPage.members);
+          setIsLoading(false);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setClub(undefined);
+          setIsLoading(false);
+        }
+      });
 
     return () => {
       active = false;
@@ -41,17 +57,46 @@ export default function ClubDetailPage() {
     return () => window.clearTimeout(timeoutId);
   }, [toastVisible]);
 
-  const handleCancelParticipation = async () => {
-    if (!club || club.hasStarted || isCancelling) return;
-
-    setIsCancelling(true);
-    await cancelClubParticipation(club.id);
-    const updatedClub = await fetchClubById(club.id);
+  const refreshClub = async (id: number, joinedFallback: boolean) => {
+    const updatedClub = await fetchClubById(id);
     setClub(updatedClub);
-    setCancelModalOpen(false);
-    setHasCancelled(true);
-    setToastVisible(true);
-    setIsCancelling(false);
+    setIsJoined(updatedClub?.isJoined ?? joinedFallback);
+    const membersPage = await getClubMembers(id).catch(() => ({ members: [] }));
+    setMembers(membersPage.members);
+  };
+
+  const handleJoinClub = async () => {
+    if (!club || club.hasStarted || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      await joinClub(club.id);
+      setIsJoined(true);
+      await refreshClub(club.id, true);
+    } catch (error) {
+      window.alert(getClubErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelParticipation = async () => {
+    if (!club || club.hasStarted || isSubmitting || isCancelling) return;
+
+    setIsSubmitting(true);
+    setIsCancelling(true);
+    try {
+      await leaveClub(club.id);
+      setIsJoined(false);
+      await refreshClub(club.id, false);
+      setCancelModalOpen(false);
+      setToastVisible(true);
+    } catch (error) {
+      window.alert(getClubErrorMessage(error));
+    } finally {
+      setIsCancelling(false);
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -67,21 +112,28 @@ export default function ClubDetailPage() {
               <p className="text-sm font-bold uppercase tracking-[0.18em] text-caramel">Club preview</p>
               <div className="mt-6 flex flex-col gap-7 sm:flex-row">
                 <img
-                  src={club.thumbnail}
+                  src={club.bookCover || club.thumbnail}
                   alt={`${club.title} 책 표지`}
                   className="h-64 w-44 rounded-[1.35rem] object-cover shadow-soft"
                 />
                 <div className="flex-1">
                   <span className="rounded-full bg-linen/52 px-3 py-1.5 text-xs font-bold text-coffee">
-                    {club.category}
+                    {club.recruitmentStatus || club.category}
                   </span>
                   <h1 className="mt-5 text-3xl font-bold">{club.title}</h1>
-                  <p className="mt-2 text-coffee/62">{club.author}</p>
+                  <p className="mt-2 text-coffee/62">
+                    {club.bookTitle || club.title}
+                    {club.bookAuthor || club.author ? ` · ${club.bookAuthor || club.author}` : ""}
+                  </p>
+                  {club.leaderName && <p className="mt-2 text-sm font-bold text-coffee/62">모임장 {club.leaderName}</p>}
                   <p className="mt-6 leading-7 text-coffee/72">{club.description}</p>
-                  <p className="mt-6 text-sm font-bold text-coffee/70">{club.meetingLabel}</p>
+                  <p className="mt-6 text-sm font-bold text-coffee/70">
+                    {club.startDate || club.endDate ? `${club.startDate} ~ ${club.endDate}` : club.meetingLabel}
+                  </p>
                   <p className="mt-2 text-sm font-bold text-caramel">
                     현재 {club.members} / {club.maxMembers}명 참여 중
                   </p>
+                  {members.length > 0 && <p className="mt-2 text-sm text-coffee/58">참여자 {members.length}명</p>}
                 </div>
               </div>
               <div className="mt-9 border-t border-coffee/10 pt-6">
@@ -92,16 +144,17 @@ export default function ClubDetailPage() {
                   <Button href="/clubs" variant="secondary" className="min-h-12 px-6 text-sm">
                     목록으로 돌아가기
                   </Button>
-                  <motion.button
-                    type="button"
-                    onClick={() => setCancelModalOpen(true)}
-                    disabled={Boolean(club.hasStarted) || hasCancelled}
+                  <JoinClubButton
+                    isJoined={isJoined}
+                    isSubmitting={isSubmitting}
+                    onClick={() => (isJoined ? setCancelModalOpen(true) : handleJoinClub())}
+                    disabled={Boolean(club.hasStarted) || isSubmitting}
                     className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#ae8175]/34 bg-[#c9a296]/40 px-6 py-3 text-sm font-bold leading-none text-[#70493f] shadow-[0_10px_24px_rgba(112,73,63,.08)] transition duration-200 hover:bg-[#b98a7d]/55 hover:text-[#633f36] disabled:cursor-not-allowed disabled:border-coffee/10 disabled:bg-linen/30 disabled:text-coffee/45 disabled:shadow-none"
-                    whileHover={club.hasStarted || hasCancelled ? undefined : { y: -2 }}
-                    whileTap={club.hasStarted || hasCancelled ? undefined : { scale: 0.98 }}
+                    whileHover={club.hasStarted || isSubmitting ? undefined : { y: -2 }}
+                    whileTap={club.hasStarted || isSubmitting ? undefined : { scale: 0.98 }}
                   >
                     모임 참가 취소
-                  </motion.button>
+                  </JoinClubButton>
                 </div>
                 {club.hasStarted && (
                   <p className="mt-3 text-sm font-bold text-coffee/54">

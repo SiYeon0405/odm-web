@@ -141,6 +141,19 @@ export default function LoginPage() {
                 required
               />
             </div>
+            <label className="auth-field" htmlFor="signup-introduction">
+              <span>소개</span>
+              <textarea
+                id="signup-introduction"
+                className="auth-input auth-textarea"
+                placeholder="좋아하는 책이나 독서 취향을 알려주세요."
+                maxLength={200}
+                value={signupForm.values.introduction}
+                onChange={(event) => signupForm.updateValue("introduction", event.target.value)}
+                disabled={!isSignup || signupForm.isSubmitting}
+              />
+              <small className="auth-count">{signupForm.values.introduction.length}/200</small>
+            </label>
             {(passwordError || signupForm.error) && (
               <p className="auth-error">{passwordError || signupForm.error}</p>
             )}

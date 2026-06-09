@@ -21,7 +21,7 @@ export default function MyClubsPage() {
           <h1 className="mt-6 text-4xl font-bold leading-tight sm:text-5xl">내 독서모임</h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-coffee/70">
             {isLoggedIn
-              ? `${user?.nickname}님이 함께 읽고 있는 모임을 모았습니다.`
+              ? `${user?.nickname || "회원"}님이 함께 읽고 있는 모임을 모았습니다.`
               : "로그인 후 참여한 독서모임을 확인할 수 있습니다."}
           </p>
           {!isLoggedIn ? (

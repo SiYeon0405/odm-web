@@ -1,4 +1,4 @@
-import { adjustClubMemberCount, fetchClubs } from "@/features/clubs/api/clubsApi";
+import { adjustClubMemberCount, getMyClubs } from "@/features/clubs/api/clubsApi";
 import type { Club } from "@/features/clubs/types";
 
 const JOINED_CLUBS_KEY = "odm_joinedClubIds";
@@ -53,7 +53,6 @@ export async function cancelClubParticipation(clubId: number): Promise<void> {
 }
 
 export async function fetchJoinedClubs(): Promise<Club[]> {
-  const ids = getJoinedClubIds();
-  const clubs = await fetchClubs();
-  return ids.map((id) => clubs.find((club) => club.id === id)).filter((club): club is Club => Boolean(club));
+  const data = await getMyClubs();
+  return data.clubs;
 }

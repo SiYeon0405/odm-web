@@ -3,15 +3,18 @@ import { Link } from "react-router-dom";
 import { softEase } from "@/animations/motion";
 import OdmLogo from "@/components/shared/OdmLogo";
 import Button from "@/components/ui/Button";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 
 const menuItems = [
-  { label: "홈", href: "#clubs" },
-  { label: "책 검색", href: "#records" },
-  { label: "독서 모임", href: "#community" },
+  { label: "홈", href: "/home" },
+  { label: "책 검색", href: "/search" },
+  { label: "독서 모임", href: "/clubs" },
   { label: "내 독서모임", href: "/my-clubs" },
 ];
 
 export default function HomeNavbar() {
+  const { isLoggedIn } = useAuth();
+
   return (
     <motion.header
       className="fixed inset-x-0 top-0 z-50 px-4 py-4"
@@ -24,25 +27,15 @@ export default function HomeNavbar() {
           <OdmLogo className="home-navbar-logo h-10 w-[5.8rem] md:w-[6.6rem]" />
         </Link>
         <div className="hidden items-center gap-7 text-sm font-bold text-coffee/74 lg:flex">
-          {menuItems.map((item) =>
-            item.href.startsWith("/") || item.label === "홈" ? (
-              <Link
-                key={item.label}
-                to={item.label === "홈" ? "/home" : item.href}
-                className="transition hover:text-espresso"
-              >
-                {item.label}
-              </Link>
-            ) : (
-              <a key={item.label} href={item.href} className="transition hover:text-espresso">
-                {item.label}
-              </a>
-            ),
-          )}
+          {menuItems.map((item) => (
+            <Link key={item.label} to={item.href} className="transition hover:text-espresso">
+              {item.label}
+            </Link>
+          ))}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <Button href="/login" variant="secondary" className="min-h-11 px-6 text-sm max-[374px]:!px-3">
-            로그인
+          <Button href={isLoggedIn ? "/mypage" : "/login"} variant="secondary" className="min-h-11 px-6 text-sm max-[374px]:!px-3">
+            {isLoggedIn ? "마이페이지" : "로그인"}
           </Button>
           <Button href="/" variant="secondary" className="min-h-11 px-6 text-sm max-[374px]:!px-3">
             랜딩으로

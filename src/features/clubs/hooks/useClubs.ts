@@ -2,31 +2,46 @@ import { useEffect, useMemo, useState } from "react";
 import { fetchClubs } from "@/features/clubs/api/clubsApi";
 import type { Club, ClubSort } from "@/features/clubs/types";
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 20;
+const ALL_FILTER = "전체";
 
 export function useClubs() {
   const [clubs, setClubs] = useState<Club[]>([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("전체");
-  const [capacity, setCapacity] = useState("전체");
+  const [category, setCategory] = useState(ALL_FILTER);
+  const [capacity, setCapacity] = useState(ALL_FILTER);
   const [sort, setSort] = useState<ClubSort>("latest");
   const [page, setPage] = useState(1);
 
   useEffect(() => {
     let active = true;
+    setIsLoading(true);
 
-    fetchClubs().then((data) => {
-      if (active) {
-        setClubs(data);
-        setIsLoading(false);
-      }
-    });
+    fetchClubs(page - 1, PAGE_SIZE)
+      .then((data) => {
+        if (active) {
+          setClubs(data.clubs);
+          setTotalElements(data.totalElements);
+          setTotalPages(data.totalPages);
+          setIsLoading(false);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setClubs([]);
+          setTotalElements(0);
+          setTotalPages(0);
+          setIsLoading(false);
+        }
+      });
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [page]);
 
   useEffect(() => {
     setPage(1);
@@ -40,8 +55,8 @@ export function useClubs() {
         [club.title, club.author, club.description, ...club.tags].some((value) =>
           value.toLowerCase().includes(keyword),
         );
-      const matchesCategory = category === "전체" || club.category === category;
-      const matchesCapacity = capacity === "전체" || club.members < club.maxMembers;
+      const matchesCategory = category === ALL_FILTER || club.category === category;
+      const matchesCapacity = capacity === ALL_FILTER || club.members < club.maxMembers;
 
       return matchesSearch && matchesCategory && matchesCapacity;
     });
@@ -55,13 +70,13 @@ export function useClubs() {
     });
   }, [capacity, category, clubs, search, sort]);
 
-  const pageCount = Math.max(1, Math.ceil(filteredClubs.length / PAGE_SIZE));
+  const pageCount = Math.max(1, totalPages || Math.ceil(filteredClubs.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
-  const visibleClubs = filteredClubs.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const isFiltering = search.trim().length > 0 || category !== ALL_FILTER || capacity !== ALL_FILTER;
 
   return {
-    clubs: visibleClubs,
-    total: filteredClubs.length,
+    clubs: filteredClubs,
+    total: isFiltering ? filteredClubs.length : totalElements,
     isLoading,
     search,
     category,
@@ -76,4 +91,3 @@ export function useClubs() {
     setPage,
   };
 }
-

@@ -48,6 +48,12 @@ export default function ClubsPage() {
     },
     [isLoggedIn, requestJoin],
   );
+  const handleClubOpen = useCallback(
+    (club: Club) => {
+      navigate(`/clubs/${club.id}`);
+    },
+    [navigate],
+  );
 
   const handleLoginNavigation = useCallback(() => {
     closeLoginRequired();
@@ -106,7 +112,7 @@ export default function ClubsPage() {
           ) : clubs.length > 0 ? (
             <motion.div variants={fadeUp} className="mt-6 grid gap-5 lg:grid-cols-2">
               {clubs.map((club) => (
-                <ClubCard key={club.id} club={club} onJoin={handleJoin} />
+                <ClubCard key={club.id} club={club} onJoin={handleJoin} onOpen={handleClubOpen} />
               ))}
             </motion.div>
           ) : (

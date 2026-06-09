@@ -4,12 +4,11 @@ import AuthInput from "@/features/auth/components/AuthInput";
 import AuthLayout from "@/features/auth/components/AuthLayout";
 import AuthTabs from "@/features/auth/components/AuthTabs";
 import PasswordInput from "@/features/auth/components/PasswordInput";
-import ProfileImageUpload from "@/features/auth/components/ProfileImageUpload";
 import { useSignupForm } from "@/features/auth/hooks/useAuthForm";
 
 export default function SignupPage() {
   const navigate = useNavigate();
-  const { values, updateValue, selectProfileImage, submit, isSubmitting, error } = useSignupForm(() => {
+  const { values, updateValue, submit, isSubmitting, error } = useSignupForm(() => {
     navigate("/signup-complete", { replace: true });
   });
 
@@ -51,7 +50,6 @@ export default function SignupPage() {
           onChange={(event) => updateValue("nickname", event.target.value)}
           required
         />
-        <ProfileImageUpload file={values.profileImage} onChange={selectProfileImage} />
         <label className="auth-field" htmlFor="signup-introduction">
           <span>소개</span>
           <textarea
