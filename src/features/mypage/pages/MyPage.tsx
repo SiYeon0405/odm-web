@@ -17,6 +17,10 @@ import {
   type MyReview,
   type UserProfile,
 } from "@/features/auth/api/authApi";
+import { getMyRatings } from "@/features/ratings/api/ratingsApi";
+import type { UserRatingListResponse } from "@/features/ratings/types";
+import { getMyReports } from "@/features/reports/api/reportsApi";
+import type { UserReportListResponse } from "@/features/reports/types";
 
 const readingRecords = [
   { title: "스즈메의 문단속", author: "신카이 마코토", progress: 75, tone: "from-[#60463b] to-[#c18b67]" },
@@ -82,6 +86,8 @@ export default function MyPage() {
   const [clubs, setClubs] = useState<MyClub[]>([]);
   const [posts, setPosts] = useState<MyPost[]>([]);
   const [reviews, setReviews] = useState<MyReview[]>([]);
+  const [ratingsSummary, setRatingsSummary] = useState<UserRatingListResponse | null>(null);
+  const [reportsSummary, setReportsSummary] = useState<UserReportListResponse | null>(null);
   const [isLoading, setIsLoading] = useState(hasAccessToken);
   const [isEditing, setIsEditing] = useState(false);
   const [nicknameInput, setNicknameInput] = useState("");
@@ -91,7 +97,14 @@ export default function MyPage() {
   const introduction = profile?.introduction || "책은 나를 만드는 가장 조용한 시간입니다.";
   const createdAt = profile?.createdAt ? profile.createdAt.slice(0, 10).replaceAll("-", ".") : "2026.05.25";
   const userId = profile?.userId ? `ODM-${profile.userId}` : "ODM-260525";
-  const reviewItems: MyPageItem[] = reviews.length ? reviews : readingRecords;
+  const reviewItems: MyPageItem[] = reviews;
+  const dashboardStats = [
+    ["내 모임", `${clubs.length}개`],
+    ["내 리뷰", `${reviews.length}개`],
+    ["내 게시글", `${posts.length}개`],
+    ["받은 평가", `${ratingsSummary?.totalRatings ?? 0}개`],
+    ["피신고", `${reportsSummary?.totalReports ?? 0}건`],
+  ];
 
   useEffect(() => {
     if (!hasAccessToken) {
@@ -99,14 +112,16 @@ export default function MyPage() {
       return;
     }
 
-    Promise.all([getMyProfile(), fetchMyClubs(), fetchMyPosts(), fetchMyReviews()])
-      .then(([profileData, clubData, postData, reviewData]) => {
+    Promise.all([getMyProfile(), fetchMyClubs(), fetchMyPosts(), fetchMyReviews(), getMyRatings(), getMyReports()])
+      .then(([profileData, clubData, postData, reviewData, ratingData, reportData]) => {
         setProfile(profileData);
         setNicknameInput(profileData?.nickname || "");
         setIntroductionInput(profileData?.introduction || "");
         setClubs(clubData);
         setPosts(postData);
         setReviews(reviewData);
+        setRatingsSummary(ratingData);
+        setReportsSummary(reportData);
       })
       .catch((error: unknown) => {
         if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
@@ -228,7 +243,7 @@ export default function MyPage() {
             </div>
           </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
-            {profileStats.map(([label, value]) => (
+            {dashboardStats.map(([label, value]) => (
                 <div key={label} className="rounded-[1.2rem] border border-coffee/8 bg-white/52 p-4 text-center">
                   <p className="text-xl font-bold text-espresso">{value}</p><p className="mt-2 text-xs leading-4 text-coffee/58">{label}</p>
               </div>
@@ -239,7 +254,7 @@ export default function MyPage() {
           <section className="mt-10 rounded-[2rem] border border-coffee/8 bg-ivory/66 p-6 shadow-warm lg:p-8">
           <SectionTitle href="/users/me/reviews">내 독후감</SectionTitle>
             <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {reviewItems.slice(0, 4).map((book, index) => (
+            {reviewItems.length === 0 ? <p className="text-sm font-bold text-coffee/58">아직 데이터가 없습니다.</p> : reviewItems.slice(0, 4).map((book, index) => (
                 <article key={getItemId(book, index)} className="rounded-[1.4rem] border border-coffee/8 bg-white/52 p-4">
                   <div className={`grid h-52 place-items-end rounded-[1rem] bg-gradient-to-br ${book.tone || "from-[#60463b] to-[#c18b67]"} p-4 shadow-soft`}>
                     <p className="text-base font-bold leading-6 text-ivory">{getItemTitle(book, `Review ${index + 1}`)}</p>
@@ -253,8 +268,10 @@ export default function MyPage() {
         </section>
 
           <div className="mt-10 grid gap-5 lg:grid-cols-2">
-            <section className="rounded-[2rem] border border-coffee/8 bg-ivory/66 p-6 shadow-warm"><SectionTitle href="/my-clubs">참여 중인 모임</SectionTitle><div className="mt-5 min-h-36 rounded-[1.3rem] border border-dashed border-coffee/16 bg-[#f9f0e4] p-4">{clubs.slice(0, 3).map((club, index) => <div key={getItemId(club, index)} className="border-b border-coffee/8 py-2 last:border-b-0"><p className="font-bold">{getItemTitle(club, `Club ${index + 1}`)}</p><p className="mt-1 line-clamp-1 text-sm text-coffee/58">{getItemDescription(club)}</p></div>)}</div></section>
-            <section className="rounded-[2rem] border border-coffee/8 bg-ivory/66 p-6 shadow-warm"><SectionTitle>내 게시글</SectionTitle><div className="mt-5 min-h-36 rounded-[1.3rem] border border-dashed border-coffee/16 bg-[#f9f0e4] p-4">{posts.slice(0, 3).map((post, index) => <div key={getItemId(post, index)} className="border-b border-coffee/8 py-2 last:border-b-0"><p className="font-bold">{getItemTitle(post, `Post ${index + 1}`)}</p><p className="mt-1 line-clamp-1 text-sm text-coffee/58">{getItemDescription(post)}</p></div>)}</div></section>
+            <section className="rounded-[2rem] border border-coffee/8 bg-ivory/66 p-6 shadow-warm"><SectionTitle href="/my-clubs">참여 중인 모임</SectionTitle><div className="mt-5 min-h-36 rounded-[1.3rem] border border-dashed border-coffee/16 bg-[#f9f0e4] p-4">{clubs.length === 0 ? <p className="text-sm font-bold text-coffee/58">아직 데이터가 없습니다.</p> : clubs.slice(0, 3).map((club, index) => <div key={getItemId(club, index)} className="border-b border-coffee/8 py-2 last:border-b-0"><p className="font-bold">{getItemTitle(club, `Club ${index + 1}`)}</p><p className="mt-1 line-clamp-1 text-sm text-coffee/58">{getItemDescription(club)}</p></div>)}</div></section>
+            <section className="rounded-[2rem] border border-coffee/8 bg-ivory/66 p-6 shadow-warm"><SectionTitle>내 게시글</SectionTitle><div className="mt-5 min-h-36 rounded-[1.3rem] border border-dashed border-coffee/16 bg-[#f9f0e4] p-4">{posts.length === 0 ? <p className="text-sm font-bold text-coffee/58">아직 데이터가 없습니다.</p> : posts.slice(0, 3).map((post, index) => <div key={getItemId(post, index)} className="border-b border-coffee/8 py-2 last:border-b-0"><p className="font-bold">{getItemTitle(post, `Post ${index + 1}`)}</p><p className="mt-1 line-clamp-1 text-sm text-coffee/58">{getItemDescription(post)}</p></div>)}</div></section>
+            <section className="rounded-[2rem] border border-coffee/8 bg-ivory/66 p-6 shadow-warm"><SectionTitle href="/ratings/me">받은 평가</SectionTitle><div className="mt-5 rounded-[1.3rem] border border-dashed border-coffee/16 bg-[#f9f0e4] p-4"><p className="font-bold">평균 {ratingsSummary?.averageScore ?? 0}점</p><p className="mt-1 text-sm text-coffee/58">총 {ratingsSummary?.totalRatings ?? 0}개</p></div></section>
+            <section className="rounded-[2rem] border border-coffee/8 bg-ivory/66 p-6 shadow-warm"><SectionTitle href="/reports/me">피신고</SectionTitle><div className="mt-5 rounded-[1.3rem] border border-dashed border-coffee/16 bg-[#f9f0e4] p-4"><p className="font-bold">총 {reportsSummary?.totalReports ?? 0}건</p><p className="mt-1 text-sm text-coffee/58">블랙리스트 {reportsSummary?.blacklistCount ?? 0}회</p></div></section>
           </div>
         </section>
       </main>

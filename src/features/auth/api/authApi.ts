@@ -233,7 +233,7 @@ export async function fetchMyClubs(page = 0, size = 20): Promise<MyClub[]> {
   const headers = getAuthHeaders();
   if (!headers) return [];
 
-  const response = await authClient.get<ApiResponse<MyClub[] | { clubs?: MyClub[]; content?: MyClub[] }>>("/api/users/me/clubs", {
+  const response = await authClient.get<ApiResponse<MyClub[] | { clubs?: MyClub[]; content?: MyClub[] }>>("/api/clubs/my", {
     headers,
     params: { page, size },
   });
@@ -259,13 +259,13 @@ export async function fetchMyReviews(page = 0, size = 20): Promise<MyReview[]> {
   const headers = getAuthHeaders();
   if (!headers) return [];
 
-  const response = await authClient.get<ApiResponse<{ reviews?: MyReview[] } | MyReview[]>>("/api/users/me/reviews", {
+  const response = await authClient.get<ApiResponse<{ reviews?: MyReview[]; content?: MyReview[] } | MyReview[]>>("/api/users/me/reviews", {
     headers,
     params: { page, size },
   });
 
   const data = response.data.data;
-  return Array.isArray(data) ? data : data.reviews || [];
+  return Array.isArray(data) ? data : data.reviews || data.content || [];
 }
 
 export async function deleteMyAccount(): Promise<ApiResponse<unknown>> {
