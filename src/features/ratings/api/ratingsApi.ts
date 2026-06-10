@@ -49,6 +49,13 @@ function getAuthHeaders() {
   };
 }
 
+function requireAuthHeaders() {
+  const headers = getAuthHeaders();
+  if (headers) return headers;
+
+  throw new Error("로그인이 필요합니다.");
+}
+
 function unwrapApiResponse<T>(responseData: ApiResponse<T> | T): T {
   if (responseData && typeof responseData === "object") {
     if ("data" in responseData && (responseData as ApiResponse<T>).data !== undefined) {
@@ -119,7 +126,7 @@ export function getRatingErrorMessage(error: unknown): string {
 
 export async function createUserRating(payload: CreateUserRatingRequest): Promise<UserRating> {
   const response = await ratingsClient.post<ApiResponse<UserRatingResponse>>("/api/ratings", payload, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
   const data = unwrapApiResponse(response.data);
 
@@ -128,7 +135,7 @@ export async function createUserRating(payload: CreateUserRatingRequest): Promis
 
 export async function getMyRatings(page = 0, size = 20): Promise<UserRatingListResponse> {
   const response = await ratingsClient.get<ApiResponse<UserRatingListApiResponse>>("/api/ratings/me", {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
     params: { page, size },
   });
   const data = unwrapApiResponse(response.data);

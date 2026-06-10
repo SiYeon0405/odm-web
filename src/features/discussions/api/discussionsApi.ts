@@ -15,6 +15,10 @@ type ApiResponse<T> = {
 type DiscussionResponse = Partial<Discussion> & {
   id?: number;
   postId?: number;
+  authorId?: number;
+  nickname?: string;
+  author?: string;
+  authorNickname?: string;
   body?: string;
   description?: string;
   comments?: number;
@@ -57,6 +61,13 @@ function getAuthHeaders() {
   };
 }
 
+function requireAuthHeaders() {
+  const headers = getAuthHeaders();
+  if (headers) return headers;
+
+  throw new Error("로그인이 필요합니다.");
+}
+
 function unwrapApiResponse<T>(responseData: ApiResponse<T> | T): T {
   if (responseData && typeof responseData === "object" && "data" in responseData) {
     return (responseData as ApiResponse<T>).data as T;
@@ -69,7 +80,9 @@ function normalizeDiscussion(data: DiscussionResponse): Discussion {
   return {
     discussionId: data.discussionId ?? data.postId ?? data.id ?? 0,
     clubId: data.clubId,
-    userId: data.userId,
+    userId: data.userId ?? data.writerId ?? data.authorId,
+    writerId: data.writerId ?? data.userId ?? data.authorId,
+    writerNickname: data.writerNickname ?? data.nickname ?? data.authorNickname ?? data.author,
     title: data.title ?? "",
     content: data.content ?? data.body ?? data.description ?? "",
     commentCount: data.commentCount ?? data.comments,
@@ -179,7 +192,7 @@ export async function createDiscussion(request: CreateDiscussionRequest): Promis
     "/api/discussions",
     request,
     {
-      headers: getAuthHeaders(),
+      headers: requireAuthHeaders(),
     },
   );
   const payload = unwrapApiResponse(response.data);
@@ -199,7 +212,7 @@ export async function updateDiscussion(
     `/api/discussions/${discussionId}`,
     request,
     {
-      headers: getAuthHeaders(),
+      headers: requireAuthHeaders(),
     },
   );
   const payload = unwrapApiResponse(response.data);
@@ -213,7 +226,7 @@ export async function deleteDiscussion(discussionId: number): Promise<void> {
   }
 
   await discussionsClient.delete(`/api/discussions/${discussionId}`, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
 }
 
@@ -223,7 +236,7 @@ export async function likeDiscussion(postId: number): Promise<void> {
   }
 
   await discussionsClient.post(`/api/discussions/${postId}/likes`, undefined, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
 }
 
@@ -233,6 +246,6 @@ export async function unlikeDiscussion(postId: number): Promise<void> {
   }
 
   await discussionsClient.delete(`/api/discussions/${postId}/likes`, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
 }

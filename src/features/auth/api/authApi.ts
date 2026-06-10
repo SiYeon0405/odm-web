@@ -55,6 +55,12 @@ export interface UserProfile {
 export type UpdateMyProfileRequest = {
   nickname: string;
   introduction: string | null;
+  profileImage?: string | null;
+};
+
+type ProfileImageUploadResponse = Partial<UserProfile> & {
+  imageUrl?: string | null;
+  profileImageUrl?: string | null;
 };
 
 export type MyClub = {
@@ -137,6 +143,18 @@ function reportError(error: unknown): never {
   throw error;
 }
 
+function getUploadedProfileImage(data: ProfileImageUploadResponse | null | undefined): string | null {
+  return data?.profileImage ?? data?.profileImageUrl ?? data?.imageUrl ?? null;
+}
+
+function toProfileUpdateRequest(payload: UpdateMyProfileRequest): UpdateMyProfileRequest {
+  return {
+    nickname: payload.nickname,
+    introduction: payload.introduction,
+    ...(payload.profileImage !== undefined ? { profileImage: payload.profileImage } : {}),
+  };
+}
+
 export function getCurrentUser(): MockUser | null {
   if (typeof window === "undefined") return null;
   const accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY);
@@ -205,7 +223,7 @@ export async function updateMyProfile(payload: UpdateMyProfileRequest): Promise<
   const headers = getAuthHeaders();
   if (!headers) throw new Error("로그인이 필요합니다.");
 
-  const response = await authClient.put<ApiResponse<UserProfile>>("/api/users/me", payload, {
+  const response = await authClient.put<ApiResponse<UserProfile>>("/api/users/me", toProfileUpdateRequest(payload), {
     headers,
   });
 
@@ -222,11 +240,18 @@ export async function uploadMyProfileImage(image: File): Promise<UserProfile> {
   const formData = new FormData();
   formData.append("image", image);
 
-  const response = await authClient.post<ApiResponse<UserProfile>>("/api/users/me/profile-image", formData, {
+  const response = await authClient.post<ApiResponse<ProfileImageUploadResponse>>("/api/users/me/profile-image", formData, {
     headers,
   });
 
-  return response.data.data;
+  const uploadedProfileImage = getUploadedProfileImage(response.data.data);
+  const profile = await getMyProfile();
+  if (!profile) throw new Error("濡쒓렇?몄씠 ?꾩슂?⑸땲??");
+
+  return {
+    ...profile,
+    profileImage: uploadedProfileImage ?? profile.profileImage,
+  };
 }
 
 export async function fetchMyClubs(page = 0, size = 20): Promise<MyClub[]> {

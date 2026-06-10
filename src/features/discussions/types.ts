@@ -2,6 +2,8 @@ export type Discussion = {
   discussionId: number;
   clubId?: number;
   userId?: number;
+  writerId?: number;
+  writerNickname?: string;
   title: string;
   content: string;
   commentCount?: number;

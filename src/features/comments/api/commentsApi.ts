@@ -45,6 +45,13 @@ function getAuthHeaders() {
   };
 }
 
+function requireAuthHeaders() {
+  const headers = getAuthHeaders();
+  if (headers) return headers;
+
+  throw new Error("로그인이 필요합니다.");
+}
+
 function unwrapApiResponse<T>(responseData: ApiResponse<T> | T): T {
   if (responseData && typeof responseData === "object" && "data" in responseData) {
     return (responseData as ApiResponse<T>).data as T;
@@ -138,7 +145,7 @@ export async function getCommentsByDiscussionId(
   const response = await commentsClient.get<ApiResponse<CommentPageResponse | CommentResponse[]> | CommentPageResponse>(
     `/api/discussions/${discussionId}/comments`,
     {
-      headers: getAuthHeaders(),
+      headers: requireAuthHeaders(),
       params,
     },
   );
@@ -158,13 +165,9 @@ export async function createComment(discussionId: number, content: string): Prom
 
   const response = await commentsClient.post<ApiResponse<CommentResponse> | CommentResponse>(
     `/api/discussions/${discussionId}/comments`,
+    { content: trimmedContent },
     {
-      discussionId,
-      postId: discussionId,
-      content: trimmedContent,
-    },
-    {
-      headers: getAuthHeaders(),
+      headers: requireAuthHeaders(),
     },
   );
   const payload = unwrapApiResponse(response.data);
@@ -185,7 +188,7 @@ export async function updateComment(commentId: number, request: UpdateCommentReq
     `/api/comments/${commentId}`,
     { content: trimmedContent },
     {
-      headers: getAuthHeaders(),
+      headers: requireAuthHeaders(),
     },
   );
   const payload = unwrapApiResponse(response.data);

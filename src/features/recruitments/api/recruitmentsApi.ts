@@ -49,6 +49,13 @@ function getAuthHeaders() {
   };
 }
 
+function requireAuthHeaders() {
+  const headers = getAuthHeaders();
+  if (headers) return headers;
+
+  throw new Error("로그인이 필요합니다.");
+}
+
 function unwrapApiResponse<T>(responseData: ApiResponse<T> | T): T {
   if (responseData && typeof responseData === "object" && "data" in responseData) {
     return (responseData as ApiResponse<T>).data as T;
@@ -186,7 +193,7 @@ export async function updateRecruitment(
     `/api/recruitments/${recruitmentId}`,
     payload,
     {
-      headers: getAuthHeaders(),
+      headers: requireAuthHeaders(),
     },
   );
   const data = unwrapApiResponse(response.data);
@@ -198,7 +205,7 @@ export async function closeRecruitment(recruitmentId: number): Promise<void> {
   validateRecruitmentId(recruitmentId);
 
   await recruitmentsClient.patch(`/api/recruitments/${recruitmentId}/close`, undefined, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
 }
 

@@ -16,10 +16,13 @@ type BookmarkResponse = Partial<Bookmark> & {
   id?: number;
   postId?: number;
   reviewId?: number;
+  bookmarkedAt?: string;
 };
 
 type BookmarkPageResponse = Partial<BookmarkPage> & {
   bookmarks?: BookmarkResponse[];
+  bookmarkedPosts?: BookmarkResponse[];
+  bookmarkedReviews?: BookmarkResponse[];
 };
 
 type GetBookmarksParams = {
@@ -42,6 +45,13 @@ function getAuthHeaders() {
   };
 }
 
+function requireAuthHeaders() {
+  const headers = getAuthHeaders();
+  if (headers) return headers;
+
+  throw new Error("로그인이 필요합니다.");
+}
+
 function unwrapApiResponse<T>(responseData: ApiResponse<T> | T): T {
   if (responseData && typeof responseData === "object" && "data" in responseData) {
     return (responseData as ApiResponse<T>).data as T;
@@ -54,9 +64,9 @@ function normalizeBookmark(data: BookmarkResponse): Bookmark {
   return {
     bookmarkId: data.bookmarkId ?? data.id ?? 0,
     targetId: data.targetId ?? data.postId ?? data.reviewId,
-    targetType: data.targetType,
+    targetType: data.targetType ?? (data.postId ? "POST" : data.reviewId ? "REVIEW" : undefined),
     title: data.title,
-    createdAt: data.createdAt,
+    createdAt: data.createdAt ?? data.bookmarkedAt,
   };
 }
 
@@ -79,7 +89,7 @@ function normalizeBookmarkPage(
     };
   }
 
-  const content = data.content ?? data.bookmarks ?? [];
+  const content = data.content ?? data.bookmarks ?? [...(data.bookmarkedPosts ?? []), ...(data.bookmarkedReviews ?? [])];
 
   return {
     content: content.map(normalizeBookmark),
@@ -100,7 +110,7 @@ export async function bookmarkDiscussion(postId: number): Promise<void> {
   validateId(postId, "post");
 
   await bookmarksClient.post(`/api/bookmarks/posts/${postId}`, undefined, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
 }
 
@@ -108,7 +118,7 @@ export async function unbookmarkDiscussion(postId: number): Promise<void> {
   validateId(postId, "post");
 
   await bookmarksClient.delete(`/api/bookmarks/posts/${postId}`, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
 }
 
@@ -116,7 +126,7 @@ export async function bookmarkReview(reviewId: number): Promise<void> {
   validateId(reviewId, "review");
 
   await bookmarksClient.post(`/api/bookmarks/reviews/${reviewId}`, undefined, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
 }
 
@@ -124,7 +134,7 @@ export async function unbookmarkReview(reviewId: number): Promise<void> {
   validateId(reviewId, "review");
 
   await bookmarksClient.delete(`/api/bookmarks/reviews/${reviewId}`, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
 }
 
@@ -134,7 +144,7 @@ export async function getMyBookmarks(params: GetBookmarksParams = {}): Promise<B
   const response = await bookmarksClient.get<ApiResponse<BookmarkPageResponse> | BookmarkPageResponse>(
     "/api/bookmarks/me",
     {
-      headers: getAuthHeaders(),
+      headers: requireAuthHeaders(),
       params: { page, size },
     },
   );

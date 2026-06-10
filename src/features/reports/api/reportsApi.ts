@@ -50,6 +50,13 @@ function getAuthHeaders() {
   };
 }
 
+function requireAuthHeaders() {
+  const headers = getAuthHeaders();
+  if (headers) return headers;
+
+  throw new Error("로그인이 필요합니다.");
+}
+
 function unwrapApiResponse<T>(responseData: ApiResponse<T> | T): T {
   if (responseData && typeof responseData === "object") {
     if ("data" in responseData && (responseData as ApiResponse<T>).data !== undefined) {
@@ -123,7 +130,7 @@ export function getReportErrorMessage(error: unknown): string {
 
 export async function createUserReport(payload: CreateUserReportRequest): Promise<UserReport> {
   const response = await reportsClient.post<ApiResponse<UserReportResponse>>("/api/reports", payload, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
   const data = unwrapApiResponse(response.data);
 
@@ -132,7 +139,7 @@ export async function createUserReport(payload: CreateUserReportRequest): Promis
 
 export async function getMyReports(page = 0, size = 20): Promise<UserReportListResponse> {
   const response = await reportsClient.get<ApiResponse<UserReportListApiResponse>>("/api/reports/me", {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
     params: { page, size },
   });
   const data = unwrapApiResponse(response.data);
@@ -142,7 +149,7 @@ export async function getMyReports(page = 0, size = 20): Promise<UserReportListR
 
 export async function getUserReports(userId: number, page = 0, size = 20): Promise<UserReportListResponse> {
   const response = await reportsClient.get<ApiResponse<UserReportListApiResponse>>(`/api/reports/user/${userId}`, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
     params: { page, size },
   });
   const data = unwrapApiResponse(response.data);

@@ -60,6 +60,13 @@ function getAuthHeaders() {
   };
 }
 
+function requireAuthHeaders() {
+  const headers = getAuthHeaders();
+  if (headers) return headers;
+
+  throw new Error("로그인이 필요합니다.");
+}
+
 function unwrapApiResponse<T>(responseData: ApiResponse<T> | T): T {
   if (responseData && typeof responseData === "object") {
     if ("data" in responseData && (responseData as ApiResponse<T>).data !== undefined) {
@@ -141,7 +148,7 @@ export async function getNotifications(page = 0, size = 20): Promise<Notificatio
   const response = await notificationsClient.get<ApiResponse<NotificationPageResponse> | NotificationPageResponse>(
     "/api/notifications",
     {
-      headers: getAuthHeaders(),
+      headers: requireAuthHeaders(),
       params: { page, size },
     },
   );
@@ -154,7 +161,7 @@ export async function getUnreadNotificationCount(): Promise<number> {
   const response = await notificationsClient.get<ApiResponse<UnreadCountResponse | number> | UnreadCountResponse | number>(
     "/api/notifications/unread-count",
     {
-      headers: getAuthHeaders(),
+      headers: requireAuthHeaders(),
     },
   );
   const payload = unwrapApiResponse(response.data);
@@ -167,7 +174,7 @@ export async function markNotificationAsRead(notificationId: number): Promise<No
     `/api/notifications/${notificationId}/read`,
     undefined,
     {
-      headers: getAuthHeaders(),
+      headers: requireAuthHeaders(),
     },
   );
   if (!response.data) return null;
@@ -178,6 +185,6 @@ export async function markNotificationAsRead(notificationId: number): Promise<No
 
 export async function markAllNotificationsAsRead(): Promise<void> {
   await notificationsClient.patch("/api/notifications/read-all", undefined, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
 }

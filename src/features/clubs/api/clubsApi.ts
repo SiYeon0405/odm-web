@@ -26,6 +26,8 @@ type ClubDetailResponse = {
   leaderName?: string;
   ownerName?: string;
   hostName?: string;
+  hostNickname?: string;
+  hostUserId?: number;
   managerName?: string;
   recruitmentStatus?: string;
   status?: string;
@@ -61,9 +63,13 @@ type ClubDetailResponse = {
 
 export type ClubMemberResponse = {
   id?: number;
+  clubMemberId?: number;
   clubId?: number;
   userId?: number;
+  nickname?: string;
   role?: string;
+  status?: string;
+  lastReadPage?: number;
   joinedAt?: string;
 };
 
@@ -102,7 +108,10 @@ export type ClubMember = {
   id: number;
   clubId?: number;
   userId?: number;
+  nickname?: string;
   role?: string;
+  status?: string;
+  lastReadPage?: number;
   joinedAt?: string;
 };
 
@@ -121,6 +130,7 @@ export type ClubCreatePayload = {
   startDate: string;
   endDate: string;
   bookId: number;
+  bookTitle: string;
 };
 
 export type ClubUpdatePayload = ClubCreatePayload & {
@@ -139,6 +149,31 @@ function getAuthHeaders() {
 
   return {
     Authorization: `Bearer ${accessToken}`,
+  };
+}
+
+function requireAuthHeaders() {
+  const headers = getAuthHeaders();
+  if (headers) return headers;
+
+  throw new Error("로그인이 필요합니다.");
+}
+
+function toClubCreateRequest(payload: ClubCreatePayload) {
+  return {
+    title: payload.title,
+    description: payload.description,
+    maxMembers: payload.maxMembers,
+    startDate: payload.startDate,
+    endDate: payload.endDate,
+    bookId: payload.bookId,
+  };
+}
+
+function toClubUpdateRequest(payload: ClubUpdatePayload) {
+  return {
+    ...toClubCreateRequest(payload),
+    status: payload.status,
   };
 }
 
@@ -166,7 +201,7 @@ export function adjustClubMemberCount(clubId: number, amount: number): void {
 
 export async function fetchClubs(page = 0, size = 20): Promise<ClubPage> {
   const response = await clubsClient.get<ApiResponse<ClubPageResponse>>("/api/clubs", {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
     params: { page, size },
   });
   const payload = response.data.data;
@@ -183,7 +218,7 @@ export const getClubs = fetchClubs;
 
 export async function getMyClubs(page = 0, size = 20): Promise<ClubPage> {
   const response = await clubsClient.get<ApiResponse<ClubPageResponse>>("/api/clubs/my", {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
     params: { page, size },
   });
   const payload = response.data.data;
@@ -200,7 +235,7 @@ export async function fetchClubById(clubId: number): Promise<ClubDetail | undefi
   validateClubId(clubId);
 
   const response = await clubsClient.get<ApiResponse<ClubDetailResponse> | ClubDetailResponse>(`/api/clubs/${clubId}`, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
   const payload = "data" in response.data && response.data.data ? response.data.data : response.data;
 
@@ -215,7 +250,7 @@ export async function getClubMembers(clubId: number, page = 0, size = 20): Promi
   const response = await clubsClient.get<ApiResponse<ClubMembersPageResponse> | ClubMembersPageResponse>(
     `/api/clubs/${clubId}/members`,
     {
-      headers: getAuthHeaders(),
+      headers: requireAuthHeaders(),
       params: { page, size },
     },
   );
@@ -234,8 +269,8 @@ export async function getClubMembers(clubId: number, page = 0, size = 20): Promi
 export async function createClub(payload: ClubCreatePayload): Promise<ClubDetail> {
   validateClubPayload(payload);
 
-  const response = await clubsClient.post<ApiResponse<ClubDetailResponse> | ClubDetailResponse>("/api/clubs", payload, {
-    headers: getAuthHeaders(),
+  const response = await clubsClient.post<ApiResponse<ClubDetailResponse> | ClubDetailResponse>("/api/clubs", toClubCreateRequest(payload), {
+    headers: requireAuthHeaders(),
   });
   const data = "data" in response.data && response.data.data ? response.data.data : response.data;
 
@@ -248,9 +283,9 @@ export async function updateClub(clubId: number, payload: ClubUpdatePayload): Pr
 
   const response = await clubsClient.put<ApiResponse<ClubDetailResponse> | ClubDetailResponse>(
     `/api/clubs/${clubId}`,
-    payload,
+    toClubUpdateRequest(payload),
     {
-      headers: getAuthHeaders(),
+      headers: requireAuthHeaders(),
     },
   );
   const data = "data" in response.data && response.data.data ? response.data.data : response.data;
@@ -262,7 +297,7 @@ export async function closeClub(clubId: number): Promise<void> {
   validateClubId(clubId);
 
   await clubsClient.delete(`/api/clubs/${clubId}`, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
 }
 
@@ -270,7 +305,7 @@ export async function joinClub(clubId: number): Promise<ClubMemberResponse | und
   validateClubId(clubId);
 
   const response = await clubsClient.post<ApiResponse<ClubMemberResponse>>(`/api/clubs/${clubId}/join`, undefined, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
 
   return response.data.data;
@@ -280,7 +315,7 @@ export async function leaveClub(clubId: number): Promise<void> {
   validateClubId(clubId);
 
   await clubsClient.delete(`/api/clubs/${clubId}/leave`, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
 }
 
@@ -289,7 +324,7 @@ export async function kickClubMember(clubId: number, userId: number): Promise<vo
   validateUserId(userId);
 
   await clubsClient.delete(`/api/clubs/${clubId}/members/${userId}`, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
 }
 
@@ -345,15 +380,19 @@ function validateClubPayload(payload: ClubCreatePayload): void {
   if (payload.maxMembers < 3 || payload.maxMembers > 8) throw new Error("모집 정원은 3명부터 8명까지 가능합니다.");
   if (!payload.startDate || !payload.endDate) throw new Error("시작일과 종료일을 입력해주세요.");
   if (!payload.bookId) throw new Error("도서 ID가 필요합니다.");
+  if (!payload.bookTitle.trim()) throw new Error("도서 제목이 필요합니다.");
   if (payload.startDate > payload.endDate) throw new Error("시작일은 종료일보다 늦을 수 없습니다.");
 }
 
 function normalizeClubMember(data: ClubMemberResponse): ClubMember {
   return {
-    id: data.id ?? data.userId ?? 0,
+    id: data.clubMemberId ?? data.id ?? data.userId ?? 0,
     clubId: data.clubId,
     userId: data.userId,
+    nickname: data.nickname,
     role: data.role,
+    status: data.status,
+    lastReadPage: data.lastReadPage,
     joinedAt: data.joinedAt,
   };
 }
@@ -383,7 +422,7 @@ function normalizeClubDetail(data: ClubDetailResponse): ClubDetail {
     createdAt: data.createdAt ?? startDate,
     hasStarted: data.hasStarted,
     isJoined: data.isJoined,
-    leaderName: data.leaderName ?? data.ownerName ?? data.hostName ?? data.managerName,
+    leaderName: data.hostNickname ?? data.leaderName ?? data.ownerName ?? data.hostName ?? data.managerName,
     recruitmentStatus: data.recruitmentStatus ?? data.status,
     bookTitle,
     bookAuthor,

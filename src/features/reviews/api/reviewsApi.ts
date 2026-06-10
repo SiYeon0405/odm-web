@@ -91,6 +91,13 @@ function getAuthHeaders() {
   };
 }
 
+function requireAuthHeaders() {
+  const headers = getAuthHeaders();
+  if (headers) return headers;
+
+  throw new Error("로그인이 필요합니다.");
+}
+
 function unwrapApiResponse<T>(responseData: ApiResponse<T> | T): T {
   if (responseData && typeof responseData === "object" && "data" in responseData) {
     return (responseData as ApiResponse<T>).data as T;
@@ -190,7 +197,7 @@ export function getReviewErrorMessage(error: unknown): string {
 
 export async function createReview(request: CreateReviewRequest): Promise<Review> {
   const response = await reviewsClient.post<ApiResponse<ReviewResponse> | ReviewResponse>("/api/reviews", request, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
   const payload = unwrapApiResponse(response.data);
 
@@ -202,7 +209,7 @@ export async function publishReview(reviewId: number): Promise<Review> {
     `/api/reviews/${reviewId}/publish`,
     undefined,
     {
-      headers: getAuthHeaders(),
+      headers: requireAuthHeaders(),
     },
   );
   const payload = unwrapApiResponse(response.data);
@@ -215,7 +222,7 @@ export async function updateReview(reviewId: number, request: ReviewUpdateReques
     `/api/reviews/${reviewId}`,
     request,
     {
-      headers: getAuthHeaders(),
+      headers: requireAuthHeaders(),
     },
   );
   const payload = unwrapApiResponse(response.data);
@@ -225,25 +232,25 @@ export async function updateReview(reviewId: number, request: ReviewUpdateReques
 
 export async function deleteReview(reviewId: number): Promise<void> {
   await reviewsClient.delete(`/api/reviews/${reviewId}`, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
 }
 
 export async function likeReview(reviewId: number): Promise<void> {
   await reviewsClient.post(`/api/reviews/${reviewId}/likes`, undefined, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
 }
 
 export async function unlikeReview(reviewId: number): Promise<void> {
   await reviewsClient.delete(`/api/reviews/${reviewId}/likes`, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
 }
 
 export async function getReviewLikeCount(reviewId: number): Promise<number> {
   const response = await reviewsClient.get<ApiResponse<number>>(`/api/reviews/${reviewId}/likes/count`, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
 
   return response.data.data ?? 0;
@@ -251,13 +258,13 @@ export async function getReviewLikeCount(reviewId: number): Promise<number> {
 
 export async function bookmarkReview(reviewId: number): Promise<void> {
   await reviewsClient.post(`/api/bookmarks/reviews/${reviewId}`, undefined, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
 }
 
 export async function unbookmarkReview(reviewId: number): Promise<void> {
   await reviewsClient.delete(`/api/bookmarks/reviews/${reviewId}`, {
-    headers: getAuthHeaders(),
+    headers: requireAuthHeaders(),
   });
 }
 
@@ -293,7 +300,7 @@ export async function getMyReviews(page = 0, size = 20): Promise<ReviewPage> {
   const response = await reviewsClient.get<ApiResponse<ReviewPageResponse> | ReviewPageResponse>(
     "/api/users/me/reviews",
     {
-      headers: getAuthHeaders(),
+      headers: requireAuthHeaders(),
       params: { page, size },
     },
   );
