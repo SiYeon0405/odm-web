@@ -5,11 +5,12 @@ import type { Club } from "@/features/clubs/types";
 
 type ClubCardProps = {
   club: Club;
+  canJoin?: boolean;
   onJoin: (club: Club) => void;
   onOpen?: (club: Club) => void;
 };
 
-function ClubCard({ club, onJoin, onOpen }: ClubCardProps) {
+function ClubCard({ club, canJoin = true, onJoin, onOpen }: ClubCardProps) {
   const remaining = club.maxMembers - club.members;
   const handleJoin = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -86,7 +87,7 @@ function ClubCard({ club, onJoin, onOpen }: ClubCardProps) {
             <span className="whitespace-nowrap text-sm font-bold text-coffee/68">
               {club.members} / {club.maxMembers}명
             </span>
-            <JoinClubButton onClick={handleJoin} />
+            {canJoin && <JoinClubButton onClick={handleJoin} />}
           </div>
         </div>
       </div>

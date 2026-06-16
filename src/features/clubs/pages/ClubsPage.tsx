@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { fadeUp, gentleStagger } from "@/animations/motion";
 import Footer from "@/components/footer/Footer";
@@ -15,6 +15,29 @@ import { useClubs } from "@/features/clubs/hooks/useClubs";
 import { useJoinClub } from "@/features/clubs/hooks/useJoinClub";
 import type { Club } from "@/features/clubs/types";
 
+type RecruitableClub = Club & {
+  status?: string;
+  recruitmentStatus?: string;
+  startDate?: string;
+};
+
+function getTodayDateKey() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = `${today.getMonth() + 1}`.padStart(2, "0");
+  const date = `${today.getDate()}`.padStart(2, "0");
+
+  return `${year}-${month}-${date}`;
+}
+
+function isRecruitableClub(club: Club, today: string) {
+  const recruitableClub = club as RecruitableClub;
+  const status = recruitableClub.status ?? recruitableClub.recruitmentStatus;
+  const startDate = recruitableClub.startDate?.slice(0, 10) ?? "";
+
+  return status === "RECRUITING" && startDate >= today;
+}
+
 export default function ClubsPage() {
   const navigate = useNavigate();
   const { isLoggedIn } = useAuth();
@@ -27,7 +50,6 @@ export default function ClubsPage() {
   } = useJoinClub();
   const {
     clubs,
-    total,
     isLoading,
     search,
     category,
@@ -41,6 +63,11 @@ export default function ClubsPage() {
     setSort,
     setPage,
   } = useClubs();
+  const today = useMemo(getTodayDateKey, []);
+  const visibleClubs = useMemo(
+    () => clubs.filter((club) => isRecruitableClub(club, today)),
+    [clubs, today],
+  );
 
   const handleJoin = useCallback(
     (club: Club) => {
@@ -104,15 +131,21 @@ export default function ClubsPage() {
           </motion.div>
           <motion.div variants={fadeUp} className="mt-10 flex items-center justify-between">
             <p className="text-sm font-bold text-coffee/62">
-              현재 참여 가능한 모임 <span className="text-caramel">{total}</span>개
+              현재 참여 가능한 모임 <span className="text-caramel">{visibleClubs.length}</span>개
             </p>
           </motion.div>
           {isLoading ? (
             <p className="mt-12 text-center text-coffee/60">모임을 불러오는 중입니다.</p>
-          ) : clubs.length > 0 ? (
+          ) : visibleClubs.length > 0 ? (
             <motion.div variants={fadeUp} className="mt-6 grid gap-5 lg:grid-cols-2">
-              {clubs.map((club) => (
-                <ClubCard key={club.id} club={club} onJoin={handleJoin} onOpen={handleClubOpen} />
+              {visibleClubs.map((club) => (
+                <ClubCard
+                  key={club.id}
+                  club={club}
+                  canJoin={isRecruitableClub(club, today)}
+                  onJoin={handleJoin}
+                  onOpen={handleClubOpen}
+                />
               ))}
             </motion.div>
           ) : (
